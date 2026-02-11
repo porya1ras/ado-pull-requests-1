@@ -3,6 +3,10 @@
     "displayName": "Azure DevOps Pull Requests",
     "description": "List and manage Azure DevOps Pull Requests",
     "version": "0.0.1",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/Careberry/ComparePRs"
+    },
     "engines": {
         "vscode": "^1.80.0"
     },
