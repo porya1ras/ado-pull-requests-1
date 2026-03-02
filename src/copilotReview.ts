@@ -86,16 +86,31 @@ export async function sendPrToCopilotReview(node: PrNode): Promise<void> {
                     { query: prompt },
                 );
             } catch {
-                // Fallback: copy to clipboard and open as a read-only document
                 await vscode.env.clipboard.writeText(prompt);
-                const doc = await vscode.workspace.openTextDocument({
-                    content: prompt,
-                    language: 'markdown',
-                });
-                await vscode.window.showTextDocument(doc);
-                vscode.window.showInformationMessage(
-                    'The review prompt has been copied to your clipboard. You can paste it into Cursor Chat or any AI chat.',
-                );
+
+                try {
+                    // Try to open Cursor AI Chat
+                    await vscode.commands.executeCommand('aichat.newchataction');
+
+                    // Wait a moment for the chat input to focus, then paste
+                    setTimeout(async () => {
+                        await vscode.commands.executeCommand('editor.action.clipboardPasteAction');
+                    }, 300);
+
+                    vscode.window.showInformationMessage(
+                        'Review prompt sent to Cursor Chat. If it didn\'t paste automatically, just press Ctrl+V or Cmd+V.',
+                    );
+                } catch {
+                    // Fallback: open as a read-only document
+                    const doc = await vscode.workspace.openTextDocument({
+                        content: prompt,
+                        language: 'markdown',
+                    });
+                    await vscode.window.showTextDocument(doc);
+                    vscode.window.showInformationMessage(
+                        'The review prompt has been copied to your clipboard. You can paste it into Cursor Chat or any AI chat.',
+                    );
+                }
             }
         } catch (err) {
             vscode.window.showErrorMessage(`Error preparing review: ${err}`);
