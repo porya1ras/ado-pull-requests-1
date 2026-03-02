@@ -58,7 +58,7 @@
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/ado-pull-requests.git
+git clone https://github.com/porya1ras/ado-pull-requests-1.git
 cd ado-pull-requests
 
 # Install dependencies
