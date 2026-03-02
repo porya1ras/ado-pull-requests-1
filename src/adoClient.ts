@@ -17,7 +17,15 @@ export class AdoClient {
             if (!token) {
                 throw new Error("Not signed in");
             }
-            const authHandler = azdev.getBearerHandler(token);
+
+            // Heuristic: PATs are usually 52 chars base64, short. Bearer tokens (JWT) are hundreds of chars.
+            let authHandler;
+            if (token.length < 100) {
+                authHandler = azdev.getPersonalAccessTokenHandler(token);
+            } else {
+                authHandler = azdev.getBearerHandler(token);
+            }
+
             this.connection = new azdev.WebApi(this.orgUrl, authHandler);
         }
         return this.connection;

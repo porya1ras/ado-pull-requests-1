@@ -6,6 +6,7 @@ const ADO_SCOPE = '499b84ac-1321-427f-aa17-267ca6975798/.default'; // Azure DevO
 export class AuthManager {
     private static instance: AuthManager;
     private session: vscode.AuthenticationSession | undefined;
+    private secretStorage: vscode.SecretStorage | undefined;
 
     private constructor() { }
 
@@ -14,6 +15,10 @@ export class AuthManager {
             AuthManager.instance = new AuthManager();
         }
         return AuthManager.instance;
+    }
+
+    initialize(context: vscode.ExtensionContext) {
+        this.secretStorage = context.secrets;
     }
 
     async getSession(createIfNone: boolean = false): Promise<vscode.AuthenticationSession | undefined> {
@@ -39,8 +44,32 @@ export class AuthManager {
         return undefined;
     }
 
+    async storePat(pat: string): Promise<void> {
+        if (this.secretStorage) {
+            await this.secretStorage.store('ado_pat', pat);
+        }
+    }
+
+    async getPat(): Promise<string | undefined> {
+        if (this.secretStorage) {
+            return await this.secretStorage.get('ado_pat');
+        }
+        return undefined;
+    }
+
     async getAccessToken(): Promise<string | undefined> {
-        const session = await this.getSession(true);
-        return session?.accessToken;
+        // Find PAT first as an override
+        const pat = await this.getPat();
+        if (pat) {
+            return pat;
+        }
+
+        try {
+            const session = await this.getSession(true);
+            return session?.accessToken;
+        } catch (e) {
+            console.error('Failed to get MS session:', e);
+            return undefined;
+        }
     }
 }

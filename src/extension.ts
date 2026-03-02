@@ -8,15 +8,34 @@ import { sendPrToCopilotReview } from './copilotReview';
 export function activate(context: vscode.ExtensionContext) {
     console.log('Extension "ado-pull-requests" is now active!');
 
+    const authManager = AuthManager.getInstance();
+    authManager.initialize(context);
+
     // ── Auth ──────────────────────────────────────────────────────────
     const signInDisposable = vscode.commands.registerCommand('adoPr.signIn', async () => {
         try {
-            const authManager = AuthManager.getInstance();
-            const session = await authManager.getSession(true);
-            if (session) {
-                vscode.window.showInformationMessage(`Signed in as ${session.account.label}`);
-            } else {
-                vscode.window.showWarningMessage('Sign in failed or cancelled.');
+            const method = await vscode.window.showQuickPick(['Microsoft Authentication', 'Personal Access Token (PAT)'], {
+                placeHolder: 'Select authentication method'
+            });
+
+            if (!method) { return; }
+
+            if (method === 'Microsoft Authentication') {
+                const session = await authManager.getSession(true);
+                if (session) {
+                    vscode.window.showInformationMessage(`Signed in as ${session.account.label}`);
+                } else {
+                    vscode.window.showWarningMessage('Sign in failed or cancelled.');
+                }
+            } else if (method === 'Personal Access Token (PAT)') {
+                const pat = await vscode.window.showInputBox({
+                    prompt: 'Enter your Azure DevOps PAT',
+                    password: true
+                });
+                if (pat) {
+                    await authManager.storePat(pat);
+                    vscode.window.showInformationMessage('PAT saved successfully.');
+                }
             }
         } catch (error) {
             vscode.window.showErrorMessage(`Sign in error: ${error}`);
@@ -27,8 +46,8 @@ export function activate(context: vscode.ExtensionContext) {
     const selectRepoDisposable = vscode.commands.registerCommand('adoPr.selectRepo', async () => {
         try {
             const authManager = AuthManager.getInstance();
-            const session = await authManager.getSession();
-            if (!session) {
+            const token = await authManager.getAccessToken();
+            if (!token) {
                 await vscode.commands.executeCommand('adoPr.signIn');
                 if (!await authManager.getAccessToken()) { return; }
             }

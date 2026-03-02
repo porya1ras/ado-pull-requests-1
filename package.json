@@ -3,7 +3,7 @@
     "displayName": "Azure DevOps Pull Requests",
     "description": "List and manage Azure DevOps Pull Requests",
     "version": "0.0.1",
-    "publisher": "2eed7ccf-abcc-4764-976b-c42ad561dd97",
+    "publisher": "PoryaRas",
     "repository": {
         "type": "git",
         "url": "https://github.com/Careberry/ComparePRs"

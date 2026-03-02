@@ -86,14 +86,15 @@ export async function sendPrToCopilotReview(node: PrNode): Promise<void> {
                     { query: prompt },
                 );
             } catch {
-                // Fallback: open as a read-only document so the user can copy→paste
+                // Fallback: copy to clipboard and open as a read-only document
+                await vscode.env.clipboard.writeText(prompt);
                 const doc = await vscode.workspace.openTextDocument({
                     content: prompt,
                     language: 'markdown',
                 });
                 await vscode.window.showTextDocument(doc);
                 vscode.window.showInformationMessage(
-                    'Copilot Chat is not available. The review prompt has been opened in a new tab — you can copy it into any AI chat.',
+                    'The review prompt has been copied to your clipboard. You can paste it into Cursor Chat or any AI chat.',
                 );
             }
         } catch (err) {
