@@ -49,9 +49,16 @@ export class PrTreeDataProvider implements vscode.TreeDataProvider<PrTreeNode> {
     private _onDidChange = new vscode.EventEmitter<PrTreeNode | undefined | void>();
     readonly onDidChangeTreeData = this._onDidChange.event;
 
+    private _prNodesCache: PrNode[] | undefined;
+    private _changedFilesCache = new Map<number, FileChangeNode[]>();
+
     constructor(private context: vscode.ExtensionContext) { }
 
-    refresh(): void { this._onDidChange.fire(); }
+    refresh(): void {
+        this._prNodesCache = undefined;
+        this._changedFilesCache.clear();
+        this._onDidChange.fire();
+    }
 
     // --- TreeDataProvider interface ---
 
@@ -75,6 +82,10 @@ export class PrTreeDataProvider implements vscode.TreeDataProvider<PrTreeNode> {
     // --- root: list PRs ---
 
     private async getRootNodes(): Promise<PrNode[]> {
+        if (this._prNodesCache) {
+            return this._prNodesCache;
+        }
+
         const sel = this.context.workspaceState.get<{
             orgUrl: string; projectId: string; repoId: string; name: string;
         }>('adoPlugin.selectedRepo');
@@ -87,12 +98,13 @@ export class PrTreeDataProvider implements vscode.TreeDataProvider<PrTreeNode> {
         try {
             const client = new AdoClient(sel.orgUrl);
             const prs = await client.getPullRequests(sel.repoId);
-            return prs.map(pr => ({
+            this._prNodesCache = prs.map(pr => ({
                 kind: 'pr' as const,
                 pr,
                 repoId: sel.repoId,
                 orgUrl: sel.orgUrl,
             }));
+            return this._prNodesCache;
         } catch (err) {
             vscode.window.showErrorMessage(`Error fetching PRs: ${err}`);
             return [];
@@ -102,28 +114,35 @@ export class PrTreeDataProvider implements vscode.TreeDataProvider<PrTreeNode> {
     // --- children: changed files ---
 
     private async getChangedFiles(node: PrNode): Promise<FileChangeNode[]> {
+        const prId = node.pr.pullRequestId!;
+        if (this._changedFilesCache.has(prId)) {
+            return this._changedFilesCache.get(prId)!;
+        }
+
         try {
             const client = new AdoClient(node.orgUrl);
-            const iterations = await client.getPullRequestIterations(node.repoId, node.pr.pullRequestId!);
+            const iterations = await client.getPullRequestIterations(node.repoId, prId);
 
             if (!iterations.length) { return []; }
 
             const latestIteration = iterations[iterations.length - 1];
             const changes = await client.getPullRequestIterationChanges(
                 node.repoId,
-                node.pr.pullRequestId!,
+                prId,
                 latestIteration.id!,
             );
 
             if (!changes.changeEntries) { return []; }
 
-            return changes.changeEntries.map(c => ({
+            const result = changes.changeEntries.map(c => ({
                 kind: 'file' as const,
                 change: c as GitInterfaces.GitPullRequestChange,
                 pr: node.pr,
                 repoId: node.repoId,
                 orgUrl: node.orgUrl,
             }));
+            this._changedFilesCache.set(prId, result);
+            return result;
         } catch (err) {
             vscode.window.showErrorMessage(`Error fetching changed files: ${err}`);
             return [];

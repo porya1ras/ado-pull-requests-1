@@ -119,6 +119,7 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.window.registerTreeDataProvider('ado-pr-explorer', prProvider);
 
     const refreshDisposable = vscode.commands.registerCommand('adoPr.refresh', () => {
+        AuthManager.getInstance().clearCache();
         prProvider.refresh();
     });
 
