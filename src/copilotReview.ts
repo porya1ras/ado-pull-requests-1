@@ -80,15 +80,28 @@ export async function sendPrToCopilotReview(node: PrNode): Promise<void> {
             // ].join('\n');
             const prompt = [
                 `You are a senior code reviewer for a pull request.`,
-                `Your task: produce a structured review that can be converted into PR comments.`,
+                `Produce TWO outputs in this exact order:`,
+                `A) A human-readable review (plain text).`,
+                `B) A machine-readable JSON block for automated PR comments.`,
                 ``,
-                `RULES (must follow):`,
-                `1) Output MUST be valid JSON only. No markdown, no extra text.`,
-                `2) Do NOT invent files, line numbers, functions, or context not present in the diff.`,
-                `3) If information is missing, set fields to null and explain in "note".`,
-                `4) Prefer actionable, minimal, high-signal feedback.`,
-                `5) Use the provided severity levels exactly: "blocker" | "high" | "medium" | "low" | "nit".`,
-                `6) All comments must map to a specific diff location when possible.`,
+                `STRICT RULES (must follow):`,
+                `1) Use EXACTLY these section headers for part A:`,
+                `   - SUMMARY`,
+                `   - KEY RISKS`,
+                `   - FILE-BY-FILE NOTES`,
+                `   - TESTING RECOMMENDATIONS`,
+                `   - FINAL VERDICT`,
+                `2) Keep part A concise and high-signal. Max 250 lines.`,
+                `3) After part A, output a single line delimiter EXACTLY as:`,
+                `===JSON===`,
+                `4) After the delimiter, output VALID JSON ONLY. No markdown, no extra text.`,
+                `5) Do NOT invent files, line numbers, functions, or context not present in the diff.`,
+                `6) If exact line numbers cannot be determined from the diff, set "line"/"startLine"/"endLine" to null and explain in "note" or "rationale".`,
+                `7) Use the provided enums exactly:`,
+                `   - severity: "blocker" | "high" | "medium" | "low" | "nit"`,
+                `   - category: "bug" | "security" | "performance" | "style" | "maintainability" | "testing" | "docs"`,
+                `   - side: "RIGHT" | "LEFT"`,
+                `   - status: "pass" | "warn" | "fail"`,
                 ``,
                 `PR CONTEXT:`,
                 `- title: ${node.pr.title}`,
@@ -96,42 +109,42 @@ export async function sendPrToCopilotReview(node: PrNode): Promise<void> {
                 `- author: ${node.pr.createdBy?.displayName ?? '(unknown)'}`,
                 `- description: ${node.pr.description || '(none)'}`,
                 ``,
-                `OUTPUT SCHEMA (JSON):`,
+                `JSON SCHEMA (output must conform):`,
                 `{
-    "meta": {
-      "schemaVersion": "1.0",
-      "prId": <number>,
-      "summary": <string>,
-      "overallRisk": "low" | "medium" | "high",
-      "confidence": 0.0-1.0
-    },
-    "checks": {
-      "bugs": { "status": "pass"|"warn"|"fail", "note": <string|null> },
-      "security": { "status": "pass"|"warn"|"fail", "note": <string|null> },
-      "performance": { "status": "pass"|"warn"|"fail", "note": <string|null> },
-      "maintainability": { "status": "pass"|"warn"|"fail", "note": <string|null> },
-      "tests": { "status": "pass"|"warn"|"fail", "note": <string|null> }
-    },
-    "comments": [
-      {
-        "id": <string>,
-        "severity": "blocker"|"high"|"medium"|"low"|"nit",
-        "category": "bug"|"security"|"performance"|"style"|"maintainability"|"testing"|"docs",
-        "filePath": <string>,
-        "side": "RIGHT"|"LEFT",
-        "line": <number|null>,
-        "startLine": <number|null>,
-        "endLine": <number|null>,
-        "title": <string>,
-        "message": <string>,
-        "suggestion": <string|null>,
-        "rationale": <string|null>
-      }
-    ],
-    "generalSuggestions": [
-      { "title": <string>, "message": <string> }
-    ]
-  }`,
+                "meta": {
+                "schemaVersion": "1.0",
+                "prId": <number>,
+                "summary": <string>,
+                "overallRisk": "low" | "medium" | "high",
+                "confidence": 0.0-1.0
+                },
+                "checks": {
+                "bugs": { "status": "pass"|"warn"|"fail", "note": <string|null> },
+                "security": { "status": "pass"|"warn"|"fail", "note": <string|null> },
+                "performance": { "status": "pass"|"warn"|"fail", "note": <string|null> },
+                "maintainability": { "status": "pass"|"warn"|"fail", "note": <string|null> },
+                "tests": { "status": "pass"|"warn"|"fail", "note": <string|null> }
+                },
+                "comments": [
+                {
+                    "id": <string>,
+                    "severity": "blocker"|"high"|"medium"|"low"|"nit",
+                    "category": "bug"|"security"|"performance"|"style"|"maintainability"|"testing"|"docs",
+                    "filePath": <string>,
+                    "side": "RIGHT"|"LEFT",
+                    "line": <number|null>,
+                    "startLine": <number|null>,
+                    "endLine": <number|null>,
+                    "title": <string>,
+                    "message": <string>,
+                    "suggestion": <string|null>,
+                    "rationale": <string|null>
+                }
+                ],
+                "generalSuggestions": [
+                { "title": <string>, "message": <string> }
+                ]
+            }`,
                 ``,
                 `DIFF (unified). Use ONLY this content as ground truth:`,
                 `---`,
