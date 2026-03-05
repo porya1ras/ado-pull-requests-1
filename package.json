@@ -37,13 +37,18 @@
             },
             {
                 "command": "adoPr.copilotReview",
-                "title": "ADO: Send PR to Copilot Review",
+                "title": "ADO: Send PR to AI Review",
                 "icon": "$(comment-discussion)"
             },
             {
                 "command": "adoPr.openPr",
                 "title": "Open PR in Browser",
                 "icon": "$(link-external)"
+            },
+            {
+                "command": "adoPr.postReviewComment",
+                "title": "ADO: Post AI Review to PR",
+                "icon": "$(comment)"
             }
         ],
         "menus": {
@@ -67,6 +72,11 @@
                 },
                 {
                     "command": "adoPr.openPr",
+                    "when": "viewItem == pullRequest",
+                    "group": "inline"
+                },
+                {
+                    "command": "adoPr.postReviewComment",
                     "when": "viewItem == pullRequest",
                     "group": "inline"
                 }

@@ -87,4 +87,18 @@ export class AdoClient {
             stream.on('error', reject);
         });
     }
+
+    async addPullRequestComment(repoId: string, pullRequestId: number, content: string): Promise<GitInterfaces.GitPullRequestCommentThread> {
+        const gitApi = await this.getGitApi();
+        const thread: GitInterfaces.GitPullRequestCommentThread = {
+            comments: [
+                {
+                    content,
+                    commentType: GitInterfaces.CommentType.Text
+                }
+            ],
+            status: GitInterfaces.CommentThreadStatus.Active
+        };
+        return await gitApi.createThread(thread, repoId, pullRequestId);
+    }
 }

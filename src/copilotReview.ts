@@ -12,7 +12,7 @@ export async function sendPrToCopilotReview(node: PrNode): Promise<void> {
 
     await vscode.window.withProgress({
         location: vscode.ProgressLocation.Notification,
-        title: 'Preparing PR for Copilot review…',
+        title: 'Preparing PR for AI review…',
         cancellable: false,
     }, async () => {
         try {
@@ -46,7 +46,7 @@ export async function sendPrToCopilotReview(node: PrNode): Promise<void> {
 
                 diffParts.push(`### ${changeType} ${path}`);
 
-                // Fetch content for edits so Copilot can see the code
+                // Fetch content for edits so AI can see the code
                 if (
                     entry.changeType !== undefined &&
                     (entry.changeType & GitInterfaces.VersionControlChangeType.Delete) === 0 &&
@@ -66,17 +66,76 @@ export async function sendPrToCopilotReview(node: PrNode): Promise<void> {
                 diffParts.push('');
             }
 
+            // const prompt = [
+            //     `Please review the following pull request changes.`,
+            //     `**PR:** ${node.pr.title} (#${node.pr.pullRequestId})`,
+            //     `**Author:** ${node.pr.createdBy?.displayName}`,
+            //     `**Description:** ${node.pr.description || '(none)'}`,
+            //     '',
+            //     '---',
+            //     '',
+            //     ...diffParts,
+            //     '',
+            //     'Please provide a thorough code review: identify bugs, security issues, performance concerns, and suggest improvements.',
+            // ].join('\n');
             const prompt = [
-                `Please review the following pull request changes.`,
-                `**PR:** ${node.pr.title} (#${node.pr.pullRequestId})`,
-                `**Author:** ${node.pr.createdBy?.displayName}`,
-                `**Description:** ${node.pr.description || '(none)'}`,
-                '',
-                '---',
-                '',
+                `You are a senior code reviewer for a pull request.`,
+                `Your task: produce a structured review that can be converted into PR comments.`,
+                ``,
+                `RULES (must follow):`,
+                `1) Output MUST be valid JSON only. No markdown, no extra text.`,
+                `2) Do NOT invent files, line numbers, functions, or context not present in the diff.`,
+                `3) If information is missing, set fields to null and explain in "note".`,
+                `4) Prefer actionable, minimal, high-signal feedback.`,
+                `5) Use the provided severity levels exactly: "blocker" | "high" | "medium" | "low" | "nit".`,
+                `6) All comments must map to a specific diff location when possible.`,
+                ``,
+                `PR CONTEXT:`,
+                `- title: ${node.pr.title}`,
+                `- id: ${node.pr.pullRequestId}`,
+                `- author: ${node.pr.createdBy?.displayName ?? '(unknown)'}`,
+                `- description: ${node.pr.description || '(none)'}`,
+                ``,
+                `OUTPUT SCHEMA (JSON):`,
+                `{
+    "meta": {
+      "schemaVersion": "1.0",
+      "prId": <number>,
+      "summary": <string>,
+      "overallRisk": "low" | "medium" | "high",
+      "confidence": 0.0-1.0
+    },
+    "checks": {
+      "bugs": { "status": "pass"|"warn"|"fail", "note": <string|null> },
+      "security": { "status": "pass"|"warn"|"fail", "note": <string|null> },
+      "performance": { "status": "pass"|"warn"|"fail", "note": <string|null> },
+      "maintainability": { "status": "pass"|"warn"|"fail", "note": <string|null> },
+      "tests": { "status": "pass"|"warn"|"fail", "note": <string|null> }
+    },
+    "comments": [
+      {
+        "id": <string>,
+        "severity": "blocker"|"high"|"medium"|"low"|"nit",
+        "category": "bug"|"security"|"performance"|"style"|"maintainability"|"testing"|"docs",
+        "filePath": <string>,
+        "side": "RIGHT"|"LEFT",
+        "line": <number|null>,
+        "startLine": <number|null>,
+        "endLine": <number|null>,
+        "title": <string>,
+        "message": <string>,
+        "suggestion": <string|null>,
+        "rationale": <string|null>
+      }
+    ],
+    "generalSuggestions": [
+      { "title": <string>, "message": <string> }
+    ]
+  }`,
+                ``,
+                `DIFF (unified). Use ONLY this content as ground truth:`,
+                `---`,
                 ...diffParts,
-                '',
-                'Please provide a thorough code review: identify bugs, security issues, performance concerns, and suggest improvements.',
             ].join('\n');
 
             // 4. Try to open Copilot Chat with the prompt
@@ -101,15 +160,28 @@ export async function sendPrToCopilotReview(node: PrNode): Promise<void> {
                         'Review prompt sent to Cursor Chat. If it didn\'t paste automatically, just press Ctrl+V or Cmd+V.',
                     );
                 } catch {
-                    // Fallback: open as a read-only document
-                    const doc = await vscode.workspace.openTextDocument({
-                        content: prompt,
-                        language: 'markdown',
-                    });
-                    await vscode.window.showTextDocument(doc);
-                    vscode.window.showInformationMessage(
-                        'The review prompt has been copied to your clipboard. You can paste it into Cursor Chat or any AI chat.',
-                    );
+                    try {
+                        // Try to open Antigravity AI Chat
+                        await vscode.commands.executeCommand('antigravity.toggleChatFocus');
+
+                        setTimeout(async () => {
+                            await vscode.commands.executeCommand('editor.action.clipboardPasteAction');
+                        }, 300);
+
+                        vscode.window.showInformationMessage(
+                            'Review prompt sent to AI Antigravity Chat. If it didn\'t paste automatically, just press Ctrl+V or Cmd+V.',
+                        );
+                    } catch {
+                        // Fallback: open as a read-only document
+                        const doc = await vscode.workspace.openTextDocument({
+                            content: prompt,
+                            language: 'markdown',
+                        });
+                        await vscode.window.showTextDocument(doc);
+                        vscode.window.showInformationMessage(
+                            'The review prompt has been copied to your clipboard. You can paste it into Cursor Chat or any AI chat.',
+                        );
+                    }
                 }
             }
         } catch (err) {
