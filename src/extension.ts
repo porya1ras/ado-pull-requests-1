@@ -5,6 +5,7 @@ import { PrTreeDataProvider, PrNode, FileChangeNode } from './prTreeDataProvider
 import { AdoPrContentProvider, ADO_PR_SCHEME, openFileDiff } from './diffViewer';
 import { sendPrToCopilotReview } from './copilotReview';
 
+
 export function activate(context: vscode.ExtensionContext) {
     console.log('Extension "ado-pull-requests" is now active!');
 
@@ -159,41 +160,7 @@ export function activate(context: vscode.ExtensionContext) {
         },
     );
 
-    // ── Post Review Comment ──────────────────────────────────────────
-    const postReviewCommentDisposable = vscode.commands.registerCommand(
-        'adoPr.postReviewComment',
-        async (node: PrNode) => {
-            const clipboardText = await vscode.env.clipboard.readText();
-            if (!clipboardText) {
-                vscode.window.showErrorMessage('Clipboard is empty. Please copy the AI review result first.');
-                return;
-            }
 
-            const preview = clipboardText.length > 100 ? clipboardText.substring(0, 100) + '...' : clipboardText;
-            const confirmation = await vscode.window.showInformationMessage(
-                `Post to PR #${node.pr.pullRequestId} as comment?\n\nPreview:\n${preview}`,
-                { modal: true },
-                'Post Comment'
-            );
-
-            if (confirmation !== 'Post Comment') {
-                return;
-            }
-
-            const client = new AdoClient(node.orgUrl);
-            await vscode.window.withProgress({
-                location: vscode.ProgressLocation.Notification,
-                title: 'Posting comment to PR...',
-            }, async () => {
-                try {
-                    await client.addPullRequestComment(node.repoId, node.pr.pullRequestId!, clipboardText);
-                    vscode.window.showInformationMessage('Successfully posted AI review to PR!');
-                } catch (err) {
-                    vscode.window.showErrorMessage(`Error posting comment: ${err}`);
-                }
-            });
-        },
-    );
 
     // ── Subscriptions ────────────────────────────────────────────────
     context.subscriptions.push(
@@ -202,8 +169,7 @@ export function activate(context: vscode.ExtensionContext) {
         refreshDisposable,
         viewFileDiffDisposable,
         openPrDisposable,
-        copilotReviewDisposable,
-        postReviewCommentDisposable,
+        copilotReviewDisposable
     );
 }
 

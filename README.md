@@ -45,7 +45,7 @@
 | 📂 **Repository Picker** | Browse your organization's projects and repositories via interactive quick-pick menus. |
 | 🌳 **PR Tree View** | A dedicated Activity Bar panel lists all **active** pull requests, expandable to reveal every changed file. |
 | 🔀 **Inline Diff Viewer** | Click any changed file to open a side-by-side diff powered by VS Code's native diff editor. |
-| 🤖 **Copilot Code Review** | One-click sends the full PR diff to GitHub Copilot Chat with a pre-built review prompt — get instant AI feedback on bugs, security issues, and code quality. |
+| 🤖 **Copilot Code Review** | Deep integration with the **GitHub Copilot background agent (`vscode.lm`)**. One-click analyzes the full PR diff quietly in the background, parses structured JSON findings, and opens an interactive webview to select and post comments directly to ADO. |
 | 🌐 **Open PR in Browser** | Quickly jump to the PR on Azure DevOps from the tree view. |
 | 🔄 **Refresh on Demand** | Instantly refresh the PR list from the sidebar toolbar. |
 | 🏷️ **Branch Info at a Glance** | Each PR displays source → target branch, author, and description in the tooltip. |
@@ -109,16 +109,18 @@ Expand any pull request node to see the list of changed files. Each file display
 
 Click a file to open the **side-by-side diff viewer**.
 
-### AI Code Review with Copilot
+### AI Code Review & Automated Feedback
 
-Click the 💬 icon next to any PR to send its changes to **GitHub Copilot Chat**.  
-The extension builds a comprehensive review prompt including:
+Click the 💬 icon next to any PR to run a background review seamlessly powered by **GitHub Copilot** (`vscode.lm` Agent API).  
+The extension builds a highly structured prompt including PR metadata and all changed file contents (up to 200 lines per file).
 
-- PR title, author, and description
-- All changed files with their content (up to 200 lines per file)
-- A request for a thorough review covering bugs, security, and performance
+Once the AI generates its review:
+1. An **Interactive Webview** opens with the PR's overall Risk, Confidence scores, and a summary.
+2. All inline comments (bugs, style, performance) are shown in a **checklist** with severity icons (🔴 Blocker, 🟠 High, 🟡 Medium, 🔵 Low, ⚪ Nit).
+3. **Select/Deselect** comments as you see fit.
+4. Click **Post Selected Comments** to automatically publish them as specific threaded comments on the Azure DevOps pull request!
 
-> **Fallback**: If Copilot Chat is unavailable, the prompt opens in a new editor tab so you can paste it into any AI assistant.
+> **Note**: This requires the GitHub Copilot extension to be installed and signed in. If the agent request fails, the raw prompt is placed safely on your clipboard.
 
 ### Open PR in Browser
 
@@ -135,7 +137,9 @@ src/
 ├── adoClient.ts          # Azure DevOps REST API client (projects, repos, PRs, file content)
 ├── prTreeDataProvider.ts # TreeDataProvider for the PR explorer sidebar
 ├── diffViewer.ts         # Virtual document content provider & diff command
-└── copilotReview.ts      # Builds review prompt & sends to Copilot Chat
+├── copilotReview.ts      # Sends PR diffs to the background Copilot agent (vscode.lm)
+├── postReviewComments.ts # JSON parser & helper functions to translate AI payload to ADO threads
+└── reviewWebview.ts      # Interactive UI to review, select, and post the generated comments
 ```
 
 ### Key Technologies

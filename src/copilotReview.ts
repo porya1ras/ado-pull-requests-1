@@ -14,7 +14,7 @@ export async function sendPrToCopilotReview(node: PrNode): Promise<void> {
         location: vscode.ProgressLocation.Notification,
         title: 'Preparing PR for AI review…',
         cancellable: false,
-    }, async () => {
+    }, async (progress) => {
         try {
             // 1. Get latest iteration
             const iterations = await client.getPullRequestIterations(
@@ -80,28 +80,15 @@ export async function sendPrToCopilotReview(node: PrNode): Promise<void> {
             // ].join('\n');
             const prompt = [
                 `You are a senior code reviewer for a pull request.`,
-                `Produce TWO outputs in this exact order:`,
-                `A) A human-readable review (plain text).`,
-                `B) A machine-readable JSON block for automated PR comments.`,
+                `Your task: produce a structured review that can be converted into PR comments.`,
                 ``,
-                `STRICT RULES (must follow):`,
-                `1) Use EXACTLY these section headers for part A:`,
-                `   - SUMMARY`,
-                `   - KEY RISKS`,
-                `   - FILE-BY-FILE NOTES`,
-                `   - TESTING RECOMMENDATIONS`,
-                `   - FINAL VERDICT`,
-                `2) Keep part A concise and high-signal. Max 250 lines.`,
-                `3) After part A, output a single line delimiter EXACTLY as:`,
-                `===JSON===`,
-                `4) After the delimiter, output VALID JSON ONLY. No markdown, no extra text.`,
-                `5) Do NOT invent files, line numbers, functions, or context not present in the diff.`,
-                `6) If exact line numbers cannot be determined from the diff, set "line"/"startLine"/"endLine" to null and explain in "note" or "rationale".`,
-                `7) Use the provided enums exactly:`,
-                `   - severity: "blocker" | "high" | "medium" | "low" | "nit"`,
-                `   - category: "bug" | "security" | "performance" | "style" | "maintainability" | "testing" | "docs"`,
-                `   - side: "RIGHT" | "LEFT"`,
-                `   - status: "pass" | "warn" | "fail"`,
+                `RULES (must follow):`,
+                `1) Output MUST be valid JSON only. No markdown, no extra text.`,
+                `2) Do NOT invent files, line numbers, functions, or context not present in the diff.`,
+                `3) If information is missing, set fields to null and explain in "note".`,
+                `4) Prefer actionable, minimal, high-signal feedback.`,
+                `5) Use the provided severity levels exactly: "blocker" | "high" | "medium" | "low" | "nit".`,
+                `6) All comments must map to a specific diff location when possible.`,
                 ``,
                 `PR CONTEXT:`,
                 `- title: ${node.pr.title}`,
@@ -109,7 +96,7 @@ export async function sendPrToCopilotReview(node: PrNode): Promise<void> {
                 `- author: ${node.pr.createdBy?.displayName ?? '(unknown)'}`,
                 `- description: ${node.pr.description || '(none)'}`,
                 ``,
-                `JSON SCHEMA (output must conform):`,
+                `OUTPUT SCHEMA (JSON):`,
                 `{
                 "meta": {
                 "schemaVersion": "1.0",
@@ -151,51 +138,41 @@ export async function sendPrToCopilotReview(node: PrNode): Promise<void> {
                 ...diffParts,
             ].join('\n');
 
-            // 4. Try to open Copilot Chat with the prompt
+            // 4. Send to background agent (vscode Language Model)
             try {
-                await vscode.commands.executeCommand(
-                    'workbench.action.chat.open',
-                    { query: prompt },
-                );
-            } catch {
-                await vscode.env.clipboard.writeText(prompt);
+                progress.report({ message: 'Sending prompt to AI...', increment: 50 });
 
-                try {
-                    // Try to open Cursor AI Chat
-                    await vscode.commands.executeCommand('aichat.newchataction');
-
-                    // Wait a moment for the chat input to focus, then paste
-                    setTimeout(async () => {
-                        await vscode.commands.executeCommand('editor.action.clipboardPasteAction');
-                    }, 300);
-
-                    vscode.window.showInformationMessage(
-                        'Review prompt sent to Cursor Chat. If it didn\'t paste automatically, just press Ctrl+V or Cmd+V.',
-                    );
-                } catch {
-                    try {
-                        // Try to open Antigravity AI Chat
-                        await vscode.commands.executeCommand('antigravity.toggleChatFocus');
-
-                        setTimeout(async () => {
-                            await vscode.commands.executeCommand('editor.action.clipboardPasteAction');
-                        }, 300);
-
-                        vscode.window.showInformationMessage(
-                            'Review prompt sent to AI Antigravity Chat. If it didn\'t paste automatically, just press Ctrl+V or Cmd+V.',
-                        );
-                    } catch {
-                        // Fallback: open as a read-only document
-                        const doc = await vscode.workspace.openTextDocument({
-                            content: prompt,
-                            language: 'markdown',
-                        });
-                        await vscode.window.showTextDocument(doc);
-                        vscode.window.showInformationMessage(
-                            'The review prompt has been copied to your clipboard. You can paste it into Cursor Chat or any AI chat.',
-                        );
-                    }
+                const models = await vscode.lm.selectChatModels({ vendor: 'copilot' });
+                if (!models || models.length === 0) {
+                    vscode.window.showErrorMessage('GitHub Copilot chat model not found. Please install or sign in to GitHub Copilot.');
+                    return;
                 }
+                const model = models[0];
+
+                const messages = [
+                    vscode.LanguageModelChatMessage.User(prompt)
+                ];
+
+                const chatResponse = await model.sendRequest(messages, {}, new vscode.CancellationTokenSource().token);
+                let responseText = '';
+                for await (const fragment of chatResponse.text) {
+                    responseText += fragment;
+                }
+
+                // Parse response
+                progress.report({ message: 'Parsing AI response...', increment: 30 });
+                const { extractReviewJson } = await import('./postReviewComments');
+                const reviewPayload = extractReviewJson(responseText);
+
+                // Show Webview
+                const { ReviewWebviewPanel } = await import('./reviewWebview');
+                ReviewWebviewPanel.createOrShow(node, reviewPayload);
+
+            } catch (err) {
+                vscode.window.showErrorMessage(`Error during AI review: ${err}`);
+                // Optional Fallback to clipboard if they want
+                await vscode.env.clipboard.writeText(prompt);
+                vscode.window.showInformationMessage('Review prompt copied to clipboard due to failure.');
             }
         } catch (err) {
             vscode.window.showErrorMessage(`Error preparing review: ${err}`);

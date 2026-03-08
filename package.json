@@ -9,7 +9,7 @@
         "url": "https://github.com/Careberry/ComparePRs"
     },
     "engines": {
-        "vscode": "^1.80.0"
+        "vscode": "^1.90.0"
     },
     "categories": [
         "Other"
@@ -44,11 +44,6 @@
                 "command": "adoPr.openPr",
                 "title": "Open PR in Browser",
                 "icon": "$(link-external)"
-            },
-            {
-                "command": "adoPr.postReviewComment",
-                "title": "ADO: Post AI Review to PR",
-                "icon": "$(comment)"
             }
         ],
         "menus": {
@@ -72,11 +67,6 @@
                 },
                 {
                     "command": "adoPr.openPr",
-                    "when": "viewItem == pullRequest",
-                    "group": "inline"
-                },
-                {
-                    "command": "adoPr.postReviewComment",
                     "when": "viewItem == pullRequest",
                     "group": "inline"
                 }
@@ -112,17 +102,17 @@
         "test": "node ./out/test/runTest.js"
     },
     "devDependencies": {
-        "@types/vscode": "^1.80.0",
         "@types/glob": "^8.1.0",
         "@types/mocha": "^10.0.1",
         "@types/node": "20.2.5",
+        "@types/vscode": "^1.109.0",
         "@typescript-eslint/eslint-plugin": "^5.59.8",
         "@typescript-eslint/parser": "^5.59.8",
         "eslint": "^8.41.0",
         "glob": "^8.1.0",
         "mocha": "^10.2.0",
-        "typescript": "^5.1.3",
         "ts-loader": "^9.4.3",
+        "typescript": "^5.1.3",
         "webpack": "^5.85.0",
         "webpack-cli": "^5.1.1"
     },

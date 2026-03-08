@@ -101,4 +101,30 @@ export class AdoClient {
         };
         return await gitApi.createThread(thread, repoId, pullRequestId);
     }
+
+    /**
+     * Create a comment thread on a PR with optional file-level positioning.
+     * If `threadContext` is provided, the comment will appear inline on the
+     * specified file/line range in the PR diff view.
+     */
+    async addPullRequestThreadComment(
+        repoId: string,
+        pullRequestId: number,
+        content: string,
+        threadContext?: GitInterfaces.CommentThreadContext,
+        status?: GitInterfaces.CommentThreadStatus,
+    ): Promise<GitInterfaces.GitPullRequestCommentThread> {
+        const gitApi = await this.getGitApi();
+        const thread: GitInterfaces.GitPullRequestCommentThread = {
+            comments: [
+                {
+                    content,
+                    commentType: GitInterfaces.CommentType.Text,
+                },
+            ],
+            status: status ?? GitInterfaces.CommentThreadStatus.Active,
+            threadContext,
+        };
+        return await gitApi.createThread(thread, repoId, pullRequestId);
+    }
 }
