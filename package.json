@@ -2,14 +2,14 @@
     "name": "ado-pull-requests",
     "displayName": "Azure DevOps Pull Requests",
     "description": "List and manage Azure DevOps Pull Requests",
-    "version": "0.0.2",
+    "version": "0.0.3",
     "publisher": "PoryaRas",
     "repository": {
         "type": "git",
         "url": "https://github.com/Careberry/ComparePRs"
     },
     "engines": {
-        "vscode": "^1.90.0"
+        "vscode": "^1.109.0"
     },
     "categories": [
         "Other"
@@ -44,6 +44,11 @@
                 "command": "adoPr.openPr",
                 "title": "Open PR in Browser",
                 "icon": "$(link-external)"
+            },
+            {
+                "command": "adoPr.filterTargetBranch",
+                "title": "Filter by Target Branch",
+                "icon": "$(filter)"
             }
         ],
         "menus": {
@@ -55,6 +60,11 @@
                 },
                 {
                     "command": "adoPr.selectRepo",
+                    "when": "view == ado-pr-explorer",
+                    "group": "navigation"
+                },
+                {
+                    "command": "adoPr.filterTargetBranch",
                     "when": "view == ado-pr-explorer",
                     "group": "navigation"
                 }

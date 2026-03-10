@@ -124,6 +124,25 @@ export function activate(context: vscode.ExtensionContext) {
         prProvider.refresh();
     });
 
+    // ── Filter ───────────────────────────────────────────────────────
+    const filterTargetBranchDisposable = vscode.commands.registerCommand('adoPr.filterTargetBranch', async () => {
+        const branches = await prProvider.getAvailableTargetBranches();
+        if (branches.length === 0) {
+            vscode.window.showInformationMessage('No pull requests or branches found to filter.');
+            return;
+        }
+
+        const choices = ['(Show All branches)', ...branches];
+        const selected = await vscode.window.showQuickPick(choices, {
+            placeHolder: 'Select a target branch to filter Pull Requests by',
+        });
+
+        if (selected) {
+            const filter = selected === '(Show All branches)' ? undefined : selected;
+            prProvider.setTargetBranchFilter(filter);
+        }
+    });
+
     // ── Diff Content Provider ────────────────────────────────────────
     const contentProvider = new AdoPrContentProvider();
     context.subscriptions.push(
@@ -167,6 +186,7 @@ export function activate(context: vscode.ExtensionContext) {
         signInDisposable,
         selectRepoDisposable,
         refreshDisposable,
+        filterTargetBranchDisposable,
         viewFileDiffDisposable,
         openPrDisposable,
         copilotReviewDisposable

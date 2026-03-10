@@ -19,7 +19,12 @@ export interface FileChangeNode {
     orgUrl: string;
 }
 
-export type PrTreeNode = PrNode | FileChangeNode;
+export interface BranchNode {
+    kind: 'branch';
+    pr: GitInterfaces.GitPullRequest;
+}
+
+export type PrTreeNode = PrNode | FileChangeNode | BranchNode;
 
 // ── Change-type helpers ──────────────────────────────────────────────
 
@@ -51,13 +56,36 @@ export class PrTreeDataProvider implements vscode.TreeDataProvider<PrTreeNode> {
 
     private _prNodesCache: PrNode[] | undefined;
     private _changedFilesCache = new Map<number, FileChangeNode[]>();
+    private _targetBranchFilter?: string;
 
     constructor(private context: vscode.ExtensionContext) { }
 
     refresh(): void {
         this._prNodesCache = undefined;
         this._changedFilesCache.clear();
+        this._targetBranchFilter = undefined;
         this._onDidChange.fire();
+    }
+
+    setTargetBranchFilter(branch?: string): void {
+        this._targetBranchFilter = branch;
+        // Don't clear cache, just re-render to apply the filter locally
+        this._onDidChange.fire();
+    }
+
+    async getAvailableTargetBranches(): Promise<string[]> {
+        // Ensure cache is populated
+        if (!this._prNodesCache) {
+            await this.getRootNodes();
+        }
+        if (!this._prNodesCache) { return []; }
+
+        const branches = new Set<string>();
+        const stripRef = (ref?: string) => ref?.replace(/^refs\/heads\//, '') || '?';
+        for (const node of this._prNodesCache) {
+            branches.add(stripRef(node.pr.targetRefName));
+        }
+        return Array.from(branches).sort();
     }
 
     // --- TreeDataProvider interface ---
@@ -65,6 +93,8 @@ export class PrTreeDataProvider implements vscode.TreeDataProvider<PrTreeNode> {
     getTreeItem(element: PrTreeNode): vscode.TreeItem {
         if (element.kind === 'pr') {
             return this.prTreeItem(element);
+        } else if (element.kind === 'branch') {
+            return this.branchTreeItem(element);
         }
         return this.fileTreeItem(element);
     }
@@ -74,41 +104,47 @@ export class PrTreeDataProvider implements vscode.TreeDataProvider<PrTreeNode> {
             return this.getRootNodes();
         }
         if (element.kind === 'pr') {
-            return this.getChangedFiles(element);
+            const files = await this.getChangedFiles(element);
+            const branchNode: BranchNode = { kind: 'branch', pr: element.pr };
+            return [branchNode, ...files];
         }
-        return []; // files have no children
+        return []; // files & branch nodes have no children
     }
 
     // --- root: list PRs ---
 
     private async getRootNodes(): Promise<PrNode[]> {
-        if (this._prNodesCache) {
-            return this._prNodesCache;
+        if (!this._prNodesCache) {
+            const sel = this.context.workspaceState.get<{
+                orgUrl: string; projectId: string; repoId: string; name: string;
+            }>('adoPlugin.selectedRepo');
+
+            if (!sel) {
+                vscode.window.setStatusBarMessage('No repository selected – run "ADO: Select Repository"', 5000);
+                return [];
+            }
+
+            try {
+                const client = new AdoClient(sel.orgUrl);
+                const prs = await client.getPullRequests(sel.repoId);
+                this._prNodesCache = prs.map(pr => ({
+                    kind: 'pr' as const,
+                    pr,
+                    repoId: sel.repoId,
+                    orgUrl: sel.orgUrl,
+                }));
+            } catch (err) {
+                vscode.window.showErrorMessage(`Error fetching PRs: ${err}`);
+                return [];
+            }
         }
 
-        const sel = this.context.workspaceState.get<{
-            orgUrl: string; projectId: string; repoId: string; name: string;
-        }>('adoPlugin.selectedRepo');
-
-        if (!sel) {
-            vscode.window.setStatusBarMessage('No repository selected – run "ADO: Select Repository"', 5000);
-            return [];
+        let result = this._prNodesCache;
+        if (this._targetBranchFilter) {
+            const stripRef = (ref?: string) => ref?.replace(/^refs\/heads\//, '') || '?';
+            result = result.filter(n => stripRef(n.pr.targetRefName) === this._targetBranchFilter);
         }
-
-        try {
-            const client = new AdoClient(sel.orgUrl);
-            const prs = await client.getPullRequests(sel.repoId);
-            this._prNodesCache = prs.map(pr => ({
-                kind: 'pr' as const,
-                pr,
-                repoId: sel.repoId,
-                orgUrl: sel.orgUrl,
-            }));
-            return this._prNodesCache;
-        } catch (err) {
-            vscode.window.showErrorMessage(`Error fetching PRs: ${err}`);
-            return [];
-        }
+        return result;
     }
 
     // --- children: changed files ---
@@ -157,12 +193,12 @@ export class PrTreeDataProvider implements vscode.TreeDataProvider<PrTreeNode> {
             vscode.TreeItemCollapsibleState.Collapsed,
         );
 
-        // Strip "refs/heads/" prefix for cleaner branch names
+        item.description = `#${node.pr.pullRequestId}`;
+
+        // Strip "refs/heads/" prefix for cleaner branch names in tooltip
         const stripRef = (ref?: string) => ref?.replace(/^refs\/heads\//, '') || '?';
         const sourceBranch = stripRef(node.pr.sourceRefName);
         const targetBranch = stripRef(node.pr.targetRefName);
-
-        item.description = `#${node.pr.pullRequestId}  ${sourceBranch} → ${targetBranch}`;
         item.tooltip = [
             node.pr.title || '',
             `${sourceBranch} → ${targetBranch}`,
@@ -172,6 +208,18 @@ export class PrTreeDataProvider implements vscode.TreeDataProvider<PrTreeNode> {
         ].join('\n');
         item.iconPath = new vscode.ThemeIcon('git-pull-request');
         item.contextValue = 'pullRequest';
+        return item;
+    }
+
+    private branchTreeItem(node: BranchNode): vscode.TreeItem {
+        const stripRef = (ref?: string) => ref?.replace(/^refs\/heads\//, '') || '?';
+        const sourceBranch = stripRef(node.pr.sourceRefName);
+        const targetBranch = stripRef(node.pr.targetRefName);
+
+        const item = new vscode.TreeItem(`${sourceBranch} → ${targetBranch}`, vscode.TreeItemCollapsibleState.None);
+        item.iconPath = new vscode.ThemeIcon('git-merge');
+        item.tooltip = `Source: ${sourceBranch}\nTarget: ${targetBranch}`;
+        item.contextValue = 'branch';
         return item;
     }
 

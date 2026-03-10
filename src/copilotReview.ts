@@ -142,12 +142,25 @@ export async function sendPrToCopilotReview(node: PrNode): Promise<void> {
             try {
                 progress.report({ message: 'Sending prompt to AI...', increment: 50 });
 
-                const models = await vscode.lm.selectChatModels({ vendor: 'copilot' });
-                if (!models || models.length === 0) {
-                    vscode.window.showErrorMessage('GitHub Copilot chat model not found. Please install or sign in to GitHub Copilot.');
-                    return;
+                // Workaround: ensure copilot-chat or similar extension is fully activated 
+                // to prevent "LanguageServerClient must be initialized first!" 
+                const copilotExt = vscode.extensions.getExtension('github.copilot-chat');
+                if (copilotExt && !copilotExt.isActive) {
+                    await copilotExt.activate();
                 }
-                const model = models[0];
+
+                let models = await vscode.lm.selectChatModels({ vendor: 'copilot' });
+                if (!models || models.length === 0) {
+                    // Fallback to any available chat model (Cursor, etc.)
+                    models = await vscode.lm.selectChatModels();
+                }
+
+                if (!models || models.length === 0) {
+                    throw new Error('No compatible AI chat model found. Please install/sign in to GitHub Copilot or an alternative.');
+                }
+
+                // Prefer GPT-4 or standard model
+                const model = models.find(m => m.family.includes('gpt-4') || m.family.includes('claude')) || models[0];
 
                 const messages = [
                     vscode.LanguageModelChatMessage.User(prompt)
@@ -169,10 +182,17 @@ export async function sendPrToCopilotReview(node: PrNode): Promise<void> {
                 ReviewWebviewPanel.createOrShow(node, reviewPayload);
 
             } catch (err) {
-                vscode.window.showErrorMessage(`Error during AI review: ${err}`);
+                vscode.window.showErrorMessage(`Error during AI review execution: ${err}`);
                 // Optional Fallback to clipboard if they want
                 await vscode.env.clipboard.writeText(prompt);
-                vscode.window.showInformationMessage('Review prompt copied to clipboard due to failure.');
+                vscode.window.showInformationMessage('Review prompt copied to clipboard due to failure. Opening chat panel...');
+
+                // Fallback: Try to open the chat panel, pasting nothing directly via command unless cursor/copilot supports it, but they can Ctrl+V
+                try {
+                    await vscode.commands.executeCommand('workbench.action.chat.open');
+                } catch (e) {
+                    // Ignore if chat open fails
+                }
             }
         } catch (err) {
             vscode.window.showErrorMessage(`Error preparing review: ${err}`);
