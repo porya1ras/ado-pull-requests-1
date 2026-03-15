@@ -41,6 +41,36 @@ export class AdoClient {
         return await connection.getGitApi();
     }
 
+    async getNotificationApi(): Promise<any> {
+        const connection = await this.getConnection();
+        return await connection.getNotificationApi();
+    }
+
+    async getServiceHooks(projectId: string): Promise<any[]> {
+        const connection = await this.getConnection();
+        const res = await connection.rest.get<any>(`${this.orgUrl}/${projectId}/_apis/hooks/subscriptions?api-version=7.1-preview.1`);
+        return res.result?.value || [];
+    }
+
+    async createServiceHook(projectId: string, eventType: string, url: string): Promise<any> {
+        const connection = await this.getConnection();
+        const payload = {
+            publisherId: "tfs",
+            eventType: eventType,
+            resourceVersion: "1.0",
+            consumerId: "webHooks",
+            consumerActionId: "httpRequest",
+            publisherInputs: {
+                projectId: projectId
+            },
+            consumerInputs: {
+                url: url
+            }
+        };
+        const res = await connection.rest.create<any>(`${this.orgUrl}/${projectId}/_apis/hooks/subscriptions?api-version=7.1-preview.1`, payload);
+        return res.result;
+    }
+
     async getProjects(): Promise<CoreInterfaces.TeamProjectReference[]> {
         const coreApi = await this.getCoreApi();
         return await coreApi.getProjects();
@@ -51,12 +81,17 @@ export class AdoClient {
         return await gitApi.getRepositories(projectId);
     }
 
-    async getPullRequests(repoId: string): Promise<GitInterfaces.GitPullRequest[]> {
+    async getPullRequests(repoId: string, searchCriteria?: GitInterfaces.GitPullRequestSearchCriteria): Promise<GitInterfaces.GitPullRequest[]> {
         const gitApi = await this.getGitApi();
-        const searchCriteria: GitInterfaces.GitPullRequestSearchCriteria = {
+        const criteria = searchCriteria ?? {
             status: GitInterfaces.PullRequestStatus.Active
         };
-        return await gitApi.getPullRequests(repoId, searchCriteria);
+        return await gitApi.getPullRequests(repoId, criteria);
+    }
+
+    async getPullRequest(repoId: string, pullRequestId: number): Promise<GitInterfaces.GitPullRequest> {
+        const gitApi = await this.getGitApi();
+        return await gitApi.getPullRequest(repoId, pullRequestId);
     }
 
     async getPullRequestIterations(repoId: string, pullRequestId: number): Promise<GitInterfaces.GitPullRequestIteration[]> {

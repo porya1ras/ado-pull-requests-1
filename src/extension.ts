@@ -4,6 +4,7 @@ import { AdoClient } from './adoClient';
 import { PrTreeDataProvider, PrNode, FileChangeNode } from './prTreeDataProvider';
 import { AdoPrContentProvider, ADO_PR_SCHEME, openFileDiff } from './diffViewer';
 import { sendPrToCopilotReview } from './copilotReview';
+import { PrNotifier } from './prNotifier';
 
 
 export function activate(context: vscode.ExtensionContext) {
@@ -182,6 +183,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 
     // ── Subscriptions ────────────────────────────────────────────────
+    const prNotifier = new PrNotifier(context);
     context.subscriptions.push(
         signInDisposable,
         selectRepoDisposable,
@@ -189,7 +191,8 @@ export function activate(context: vscode.ExtensionContext) {
         filterTargetBranchDisposable,
         viewFileDiffDisposable,
         openPrDisposable,
-        copilotReviewDisposable
+        copilotReviewDisposable,
+        { dispose: () => prNotifier.stopPolling() }
     );
 }
 
