@@ -1,174 +1,140 @@
 import * as vscode from 'vscode';
-import * as http from 'http';
-import localtunnel = require('localtunnel');
+import * as GitInterfaces from 'azure-devops-node-api/interfaces/GitInterfaces';
 import { AdoClient } from './adoClient';
 
 export class PrNotifier {
-    private server: http.Server | undefined;
-    private port = 34567; // Port to listen on
-    private tunnel: localtunnel.Tunnel | undefined;
-    private promptedRepos = new Set<string>();
+    private pollIntervalMs = 300000; // 5 minute
+    private timer: NodeJS.Timeout | undefined;
+    private cache = new Map<number, GitInterfaces.PullRequestStatus>();
+    private isFirstRun = true;
+    private currentRepoId: string | undefined;
 
     constructor(private context: vscode.ExtensionContext) {
-        this.startServer();
-        setTimeout(() => this.promptAndSetupWebhook(), 3000);
+        // Start polling
+        this.startPolling();
+
+        // Listen for workspace state changes if we can, 
+        // but typically selected repo is updated via command, 
+        // so we can just re-check the global state periodically.
     }
 
-    private startServer() {
-        this.server = http.createServer((req, res) => {
-            if (req.method === 'POST') {
-                let body = '';
-                req.on('data', chunk => {
-                    body += chunk.toString();
-                });
-                req.on('end', () => {
-                    try {
-                        const payload = JSON.parse(body);
-                        this.handleWebhookEvent(payload);
-                    } catch (e) {
-                        console.error('Failed to parse webhook payload', e);
-                    }
-                    res.writeHead(200, { 'Content-Type': 'application/json' });
-                    res.end(JSON.stringify({ status: 'success' }));
-                });
-            } else {
-                res.writeHead(404);
-                res.end();
-            }
-        });
-
-        this.server.listen(this.port, () => {
-            console.log(`ADO PR Webhook server listening on port ${this.port}`);
-        });
-
-        this.server.on('error', (e: any) => {
-            if (e.code === 'EADDRINUSE') {
-                console.error(`Failed to start ADO Hook server. Port ${this.port} is already in use.`);
-            } else {
-                console.error(`Webhook server error: ${e.message}`);
-            }
-        });
-    }
-
-    public async promptAndSetupWebhook() {
-        const sel = this.context.workspaceState.get<{
-            orgUrl: string; projectId: string; repoId: string; name: string;
-        }>('adoPlugin.selectedRepo');
-
-        if (!sel || !sel.projectId || !sel.orgUrl) {
-            return;
+    private startPolling() {
+        if (this.timer) {
+            clearInterval(this.timer);
         }
-
-        if (this.promptedRepos.has(sel.projectId)) {
-            return; // Already handled this session
-        }
-        this.promptedRepos.add(sel.projectId);
-
-        const selection = await vscode.window.showInformationMessage(
-            `Would you like to automatically configure an Azure DevOps Webhook for '${sel.name}' to get instant PR notifications?`,
-            'Yes', 'No'
-        );
-
-        if (selection === 'Yes') {
-            try {
-                // Determine or start the localtunnel
-                if (!this.tunnel) {
-                    this.tunnel = await localtunnel({ port: this.port });
-                    this.tunnel.on('close', () => {
-                        this.tunnel = undefined;
-                    });
-                }
-                const webhookUrl = `${this.tunnel.url}/webhook`;
-
-                const client = new AdoClient(sel.orgUrl);
-
-                await vscode.window.withProgress({
-                    location: vscode.ProgressLocation.Notification,
-                    title: 'Creating Azure DevOps Webhook...',
-                }, async () => {
-                    // Try to clean up any old localtunnel hooks to avoid spamming ADO subscriptions
-                    const existingHooks = await client.getServiceHooks(sel.projectId);
-                    for (const hook of existingHooks) {
-                        const url = hook.consumerInputs?.url;
-                        if (url && url.includes('loca.lt') && hook.id) {
-                            try {
-                                const conn = await (client as any).getConnection();
-                                await conn.rest.del(`${sel.orgUrl}/${sel.projectId}/_apis/hooks/subscriptions/${hook.id}?api-version=7.1-preview.1`);
-                            } catch (e) { } // Ignore delete fail
-                        }
-                    }
-
-                    // Create new hooks for created and updated
-                    await client.createServiceHook(sel.projectId, 'git.pullrequest.created', webhookUrl);
-                    await client.createServiceHook(sel.projectId, 'git.pullrequest.updated', webhookUrl);
-                });
-
-                vscode.window.showInformationMessage(`Successfully installed Webhook on Azure DevOps. (${webhookUrl})`);
-
-            } catch (err) {
-                vscode.window.showErrorMessage(`Failed to install Webhook: ${err}`);
-            }
-        }
+        this.timer = setInterval(() => this.poll(), this.pollIntervalMs);
+        // Do an immediate poll 
+        setTimeout(() => this.poll(), 5000); // delay start by 5s to avoid heavy load on activation
     }
 
     public stopPolling() {
-        if (this.server) {
-            this.server.close();
-            this.server = undefined;
-        }
-        if (this.tunnel) {
-            this.tunnel.close();
-            this.tunnel = undefined;
+        if (this.timer) {
+            clearInterval(this.timer);
+            this.timer = undefined;
         }
     }
 
-    private handleWebhookEvent(payload: any) {
-        // We only care about git.pullrequest events
-        const eventType = payload.eventType;
-        if (!eventType || !eventType.startsWith('git.pullrequest')) {
-            return;
-        }
+    private async poll() {
+        try {
+            const sel = this.context.workspaceState.get<{
+                orgUrl: string; projectId: string; repoId: string; name: string;
+            }>('adoPlugin.selectedRepo');
 
-        const pr = payload.resource;
-        if (!pr || !pr.pullRequestId) return;
-
-        const sel = this.context.workspaceState.get<{
-            orgUrl: string; projectId: string; repoId: string; name: string;
-        }>('adoPlugin.selectedRepo');
-
-        // Check if the webhook event is for the currently selected repository
-        if (sel && sel.repoId && pr.repository && pr.repository.id !== sel.repoId) {
-            return;
-        }
-
-        const prId = pr.pullRequestId;
-        const title = pr.title || 'Untitled';
-
-        let webUrl: string | undefined;
-        if (sel) {
-            webUrl = `${sel.orgUrl}/${sel.projectId}/_git/${sel.name}/pullrequest/${prId}`;
-        }
-
-        let message = '';
-        if (eventType === 'git.pullrequest.created') {
-            message = `New PR Created: #${prId} - ${title}`;
-        } else if (eventType === 'git.pullrequest.updated') {
-            const status = pr.status || 'updated';
-            if (status.toLowerCase() !== 'active') {
-                message = `PR #${prId} status changed to ${status}: ${title}`;
-            } else {
-                message = payload.message?.text || `PR #${prId} updated`;
+            if (!sel || !sel.repoId || !sel.orgUrl) {
+                // No repo selected, nothing to poll
+                return;
             }
-        } else {
-            message = payload.message?.text || `PR #${prId} updated`;
-        }
 
-        vscode.window.showInformationMessage(message, 'View PR').then(selection => {
-            if (selection === 'View PR' && webUrl) {
-                vscode.env.openExternal(vscode.Uri.parse(webUrl));
+            // If repo changed, reset cache
+            if (this.currentRepoId !== sel.repoId) {
+                this.currentRepoId = sel.repoId;
+                this.cache.clear();
+                this.isFirstRun = true;
+            }
+
+            const client = new AdoClient(sel.orgUrl);
+            const activePrs = await client.getPullRequests(sel.repoId);
+            const activeIds = new Set<number>();
+
+            if (this.isFirstRun) {
+                for (const pr of activePrs) {
+                    if (pr.pullRequestId) {
+                        this.cache.set(pr.pullRequestId, pr.status ?? GitInterfaces.PullRequestStatus.Active);
+                    }
+                }
+                this.isFirstRun = false;
+                return;
+            }
+
+            // Check for new PRs
+            for (const pr of activePrs) {
+                if (!pr.pullRequestId) continue;
+                activeIds.add(pr.pullRequestId);
+
+                const cachedStatus = this.cache.get(pr.pullRequestId);
+                if (cachedStatus === undefined) {
+                    // New PR
+                    vscode.window.showInformationMessage(`New PR Created: #${pr.pullRequestId} - ${pr.title}`, 'View PR').then(selection => {
+                        if (selection === 'View PR' && pr.repository?.webUrl) {
+                            vscode.env.openExternal(vscode.Uri.parse(`${pr.repository.webUrl}/pullrequest/${pr.pullRequestId}`));
+                        }
+                    });
+                    this.cache.set(pr.pullRequestId, pr.status ?? GitInterfaces.PullRequestStatus.Active);
+                    // Refresh the tree view automatically when a new PR is found
+                    vscode.commands.executeCommand('adoPr.refresh');
+                } else if (pr.status !== undefined && pr.status !== cachedStatus) {
+                    // Status changed while still active (rare/impossible based on ADO logic, but just in case)
+                    this.notifyStatusChange(pr);
+                    this.cache.set(pr.pullRequestId, pr.status);
+                    vscode.commands.executeCommand('adoPr.refresh');
+                }
+            }
+
+            // Check for PRs that are no longer active
+            const droppedIds: number[] = [];
+            for (const [cachedId, cachedStatus] of this.cache.entries()) {
+                if (!activeIds.has(cachedId)) {
+                    droppedIds.push(cachedId);
+                }
+            }
+
+            for (const id of droppedIds) {
+                try {
+                    const updatedPr = await client.getPullRequest(sel.repoId, id);
+                    if (updatedPr && updatedPr.status !== undefined && updatedPr.status !== this.cache.get(id)) {
+                        this.notifyStatusChange(updatedPr);
+                    }
+                } catch (err) {
+                    console.error(`Failed to fetch dropped PR ${id}`, err);
+                } finally {
+                    // Remove from cache since it's no longer active. 
+                    // We don't want to keep polling it or growing the cache forever.
+                    this.cache.delete(id);
+                }
+                vscode.commands.executeCommand('adoPr.refresh');
+            }
+
+        } catch (error) {
+            console.error('Error during PR polling:', error);
+        }
+    }
+
+    private notifyStatusChange(pr: GitInterfaces.GitPullRequest) {
+        const title = pr.title || 'Untitled';
+        const statusName = this.getStatusName(pr.status);
+        vscode.window.showInformationMessage(`PR #${pr.pullRequestId} status changed to ${statusName}: ${title}`, 'View PR').then(selection => {
+            if (selection === 'View PR' && pr.repository?.webUrl) {
+                vscode.env.openExternal(vscode.Uri.parse(`${pr.repository.webUrl}/pullrequest/${pr.pullRequestId}`));
             }
         });
+    }
 
-        vscode.commands.executeCommand('adoPr.refresh');
+    private getStatusName(status: GitInterfaces.PullRequestStatus | undefined): string {
+        switch (status) {
+            case GitInterfaces.PullRequestStatus.Active: return 'Active';
+            case GitInterfaces.PullRequestStatus.Abandoned: return 'Abandoned';
+            case GitInterfaces.PullRequestStatus.Completed: return 'Completed';
+            default: return 'Unknown';
+        }
     }
 }
