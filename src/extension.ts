@@ -4,6 +4,8 @@ import { AdoClient } from './adoClient';
 import { PrTreeDataProvider, PrNode, FileChangeNode } from './prTreeDataProvider';
 import { AdoPrContentProvider, ADO_PR_SCHEME, openFileDiff } from './diffViewer';
 import { sendPrToCopilotReview } from './copilotReview';
+import { sendPrToDbPerformanceReview } from './dbPerformanceReview';
+import { sendPrToUxMessageReview } from './uxMessageReview';
 
 
 export function activate(context: vscode.ExtensionContext) {
@@ -179,6 +181,20 @@ export function activate(context: vscode.ExtensionContext) {
         },
     );
 
+    const dbPerformanceReviewDisposable = vscode.commands.registerCommand(
+        'adoPr.dbPerformanceReview',
+        async (node: PrNode) => {
+            await sendPrToDbPerformanceReview(node);
+        },
+    );
+
+    const uxMessageReviewDisposable = vscode.commands.registerCommand(
+        'adoPr.uxMessageReview',
+        async (node: PrNode) => {
+            await sendPrToUxMessageReview(node);
+        },
+    );
+
 
 
     // ── Subscriptions ────────────────────────────────────────────────
@@ -189,7 +205,9 @@ export function activate(context: vscode.ExtensionContext) {
         filterTargetBranchDisposable,
         viewFileDiffDisposable,
         openPrDisposable,
-        copilotReviewDisposable
+        copilotReviewDisposable,
+        dbPerformanceReviewDisposable,
+        uxMessageReviewDisposable
     );
 }
 
