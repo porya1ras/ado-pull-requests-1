@@ -41,6 +41,16 @@
                 "icon": "$(comment-discussion)"
             },
             {
+                "command": "adoPr.dbPerformanceReview",
+                "title": "ADO: DB Performance Review",
+                "icon": "$(database)"
+            },
+            {
+                "command": "adoPr.uxMessageReview",
+                "title": "ADO: UX Message Review",
+                "icon": "$(feedback)"
+            },
+            {
                 "command": "adoPr.openPr",
                 "title": "Open PR in Browser",
                 "icon": "$(link-external)"
@@ -72,6 +82,16 @@
             "view/item/context": [
                 {
                     "command": "adoPr.copilotReview",
+                    "when": "viewItem == pullRequest",
+                    "group": "inline"
+                },
+                {
+                    "command": "adoPr.dbPerformanceReview",
+                    "when": "viewItem == pullRequest",
+                    "group": "inline"
+                },
+                {
+                    "command": "adoPr.uxMessageReview",
                     "when": "viewItem == pullRequest",
                     "group": "inline"
                 },
