@@ -54,10 +54,11 @@ export async function sendPrToCopilotReview(node: PrNode): Promise<void> {
                 ) {
                     try {
                         const content = await client.getFileContent(node.repoId, objectId);
-                        // Limit to first 200 lines to avoid token overflow
-                        const trimmed = content.split('\n').slice(0, 200).join('\n');
+                        // Limit to first 500 lines to avoid token overflow
+                        const lines = content.split('\n');
+                        const numbered = lines.slice(0, 500).map((line, idx) => `${idx + 1}: ${line}`).join('\n');
                         diffParts.push('```');
-                        diffParts.push(trimmed);
+                        diffParts.push(numbered);
                         diffParts.push('```');
                     } catch {
                         diffParts.push('_(content unavailable)_');
@@ -89,6 +90,8 @@ export async function sendPrToCopilotReview(node: PrNode): Promise<void> {
                 `4) Prefer actionable, minimal, high-signal feedback.`,
                 `5) Use the provided severity levels exactly: "blocker" | "high" | "medium" | "low" | "nit".`,
                 `6) All comments must map to a specific diff location when possible.`,
+                `7) THE CODE IS PREFIXED WITH LINE NUMBERS (e.g. "1: import..."). Use these exact line numbers for your "line", "startLine", and "endLine" properties.`,
+                `8) Since only the latest (new) version of the file content is provided, ALL comments must have "side": "RIGHT".`,
                 ``,
                 `PR CONTEXT:`,
                 `- title: ${node.pr.title}`,
@@ -118,7 +121,7 @@ export async function sendPrToCopilotReview(node: PrNode): Promise<void> {
                     "severity": "blocker"|"high"|"medium"|"low"|"nit",
                     "category": "bug"|"security"|"performance"|"style"|"maintainability"|"testing"|"docs",
                     "filePath": <string>,
-                    "side": "RIGHT"|"LEFT",
+                    "side": "RIGHT",
                     "line": <number|null>,
                     "startLine": <number|null>,
                     "endLine": <number|null>,
@@ -133,7 +136,7 @@ export async function sendPrToCopilotReview(node: PrNode): Promise<void> {
                 ]
             }`,
                 ``,
-                `DIFF (unified). Use ONLY this content as ground truth:`,
+                `DIFF (Numbered Code - Use the provided line numbers for ground truth):`,
                 `---`,
                 ...diffParts,
             ].join('\n');

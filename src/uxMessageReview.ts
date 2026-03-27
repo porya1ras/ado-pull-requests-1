@@ -51,10 +51,11 @@ export async function sendPrToUxMessageReview(node: PrNode): Promise<void> {
                 ) {
                     try {
                         const content = await client.getFileContent(node.repoId, objectId);
-                        // Limit to first 200 lines to avoid token overflow
-                        const trimmed = content.split('\n').slice(0, 200).join('\n');
+                        // Limit to first 500 lines to avoid token overflow
+                        const lines = content.split('\n');
+                        const numbered = lines.slice(0, 500).map((line, idx) => `${idx + 1}: ${line}`).join('\n');
                         diffParts.push('```');
-                        diffParts.push(trimmed);
+                        diffParts.push(numbered);
                         diffParts.push('```');
                     } catch {
                         diffParts.push('_(content unavailable)_');
@@ -96,6 +97,8 @@ RULES (must follow):
 3) If information is missing, set fields to null and explain in "note".
 4) Prefer actionable, minimal, high-signal feedback.
 5) All comments must map to a specific diff location when possible. Use the provided severity levels exactly: "blocker" | "high" | "medium" | "low" | "nit".
+6) THE CODE IS PREFIXED WITH LINE NUMBERS (e.g. "1: import..."). Use these exact line numbers for your "line", "startLine", and "endLine" properties.
+7) Since only the latest (new) version of the file content is provided, ALL comments must have "side": "RIGHT".
 
 OUTPUT SCHEMA (JSON):
 {
@@ -147,7 +150,7 @@ PR Description:
 Changed Files:
 {{CHANGED_FILES}}
 
-Diff:
+Diff (Numbered Code - Use the provided line numbers for comments):
 {{DIFF}}`;
 
             const prompt = promptTemplate
