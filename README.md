@@ -32,24 +32,24 @@
 **ADO Pull Requests** is a Visual Studio Code extension that brings your Azure DevOps pull request workflow directly into your editor. Select a project and repository, browse active PRs in a dedicated sidebar, inspect file-level diffs with a single click, and even send entire PRs to **GitHub Copilot Chat** for an AI-powered code review — all without opening a browser.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Careberry/ComparePRs/main/assets/preview.png" alt="Extension Preview" width="520" />
+  <img src="https://raw.githubusercontent.com/porya1ras/ado-pull-requests-1/main/assets/preview.png" alt="Extension Preview" width="520" />
 </p>
 
 ---
 
 ## 🚀 Features
 
-| Feature | Description |
-|---------|-------------|
-| 🔐 **Microsoft SSO** | Sign in with your Microsoft / Azure AD account using VS Code's built-in authentication — no PAT tokens required. |
-| 📂 **Repository Picker** | Browse your organization's projects and repositories via interactive quick-pick menus. |
-| 🌳 **PR Tree View** | A dedicated Activity Bar panel lists all **active** pull requests, expandable to reveal every changed file. |
-| 🎯 **Target Branch Filter** | Filter your active pull requests dynamically by selecting a specific target branch from a quick-pick menu in the panel header. |
-| 🔀 **Inline Diff Viewer** | Click any changed file to open a side-by-side diff powered by VS Code's native diff editor. |
+| Feature                           | Description                                                                                                                                                                                                                                                                                                                                      |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 🔐 **Microsoft SSO**               | Sign in with your Microsoft / Azure AD account using VS Code's built-in authentication — no PAT tokens required.                                                                                                                                                                                                                                 |
+| 📂 **Repository Picker**           | Browse your organization's projects and repositories via interactive quick-pick menus.                                                                                                                                                                                                                                                           |
+| 🌳 **PR Tree View**                | A dedicated Activity Bar panel lists all **active** pull requests, expandable to reveal every changed file.                                                                                                                                                                                                                                      |
+| 🎯 **Target Branch Filter**        | Filter your active pull requests dynamically by selecting a specific target branch from a quick-pick menu in the panel header.                                                                                                                                                                                                                   |
+| 🔀 **Inline Diff Viewer**          | Click any changed file to open a side-by-side diff powered by VS Code's native diff editor.                                                                                                                                                                                                                                                      |
 | 🤖 **Copilot Specialized Reviews** | Deep integration with the **GitHub Copilot background agent (`vscode.lm`)**. Features general code review alongside dedicated **DB Performance** and **UX Message** reviews. Analyzes the full PR diff quietly in the background, parses structured JSON findings, and opens an interactive webview to select and post comments directly to ADO. |
-| 🌐 **Open PR in Browser** | Quickly jump to the PR on Azure DevOps from the tree view. |
-| 🔄 **Refresh on Demand** | Instantly refresh the PR list from the sidebar toolbar. |
-| 🏷️ **Clean Branch Tracking** | Expand any PR to instantly view a dedicated nested node detailing the source → target branch mapping, alongside author and description details in the tooltip. |
+| 🌐 **Open PR in Browser**          | Quickly jump to the PR on Azure DevOps from the tree view.                                                                                                                                                                                                                                                                                       |
+| 🔄 **Refresh on Demand**           | Instantly refresh the PR list from the sidebar toolbar.                                                                                                                                                                                                                                                                                          |
+| 🏷️ **Clean Branch Tracking**       | Expand any PR to instantly view a dedicated nested node detailing the source → target branch mapping, alongside author and description details in the tooltip.                                                                                                                                                                                   |
 
 ---
 
@@ -118,7 +118,7 @@ Right-click any PR (or use the inline icons) to run a seamless background review
 * 📝 **ADO: UX Message Review** - Enforces UK spelling, plain English clarity, and actionable help text
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Careberry/ComparePRs/main/assets/review-buttons.png" alt="Review Menu Buttons Context" width="520" />
+  <img src="https://raw.githubusercontent.com/porya1ras/ado-pull-requests-1/main/assets/review-buttons.png" alt="Review Menu Buttons Context" width="520" />
   <br/><em>(Place your screenshot of the context menu in assets/review-buttons.png)</em>
 </p>
 
@@ -165,17 +165,17 @@ src/
 
 ## ⚙️ Available Commands
 
-| Command | ID | Description |
-|---------|----|-------------|
-| **ADO: Sign In** | `adoPr.signIn` | Authenticate with Microsoft / Azure AD |
-| **ADO: Select Repository** | `adoPr.selectRepo` | Pick org → project → repo |
-| **Refresh Pull Requests** | `adoPr.refresh` | Reload the PR list |
-| **Filter by Target Branch** | `adoPr.filterTargetBranch`| Filter pull requests by their target branch |
-| **View Diff** | `adoPr.viewFileDiff` | Open side-by-side diff for a changed file |
-| **Open PR in Browser** | `adoPr.openPr` | Open the PR page on Azure DevOps |
-| **Send PR to Copilot Review** | `adoPr.copilotReview` | Send PR changes to GitHub Copilot for general review |
+| Command                        | ID                          | Description                                           |
+| ------------------------------ | --------------------------- | ----------------------------------------------------- |
+| **ADO: Sign In**               | `adoPr.signIn`              | Authenticate with Microsoft / Azure AD                |
+| **ADO: Select Repository**     | `adoPr.selectRepo`          | Pick org → project → repo                             |
+| **Refresh Pull Requests**      | `adoPr.refresh`             | Reload the PR list                                    |
+| **Filter by Target Branch**    | `adoPr.filterTargetBranch`  | Filter pull requests by their target branch           |
+| **View Diff**                  | `adoPr.viewFileDiff`        | Open side-by-side diff for a changed file             |
+| **Open PR in Browser**         | `adoPr.openPr`              | Open the PR page on Azure DevOps                      |
+| **Send PR to Copilot Review**  | `adoPr.copilotReview`       | Send PR changes to GitHub Copilot for general review  |
 | **ADO: DB Performance Review** | `adoPr.dbPerformanceReview` | Send PR changes to Copilot for DB and EF Core queries |
-| **ADO: UX Message Review** | `adoPr.uxMessageReview` | Send PR changes to Copilot for UX language/grammar |
+| **ADO: UX Message Review**     | `adoPr.uxMessageReview`     | Send PR changes to Copilot for UX language/grammar    |
 
 ---
 
