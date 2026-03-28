@@ -1,13 +1,13 @@
 {
-    "name": "ado-pull-requests",
-    "displayName": "Azure DevOps Pull Requests",
+    "name": "ado-pull-requests1",
+    "displayName": "Azure DevOps Pull Requests Reviewer",
     "description": "List and manage Azure DevOps Pull Requests",
-    "version": "0.0.6",
-    "publisher": "PoryaRas",
+    "version": "0.0.7",
+    "publisher": "Porya0Ras",
     "icon": "assets/icon.png",
     "repository": {
         "type": "git",
-        "url": "https://github.com/Careberry/ComparePRs"
+        "url": "https://github.com/porya1ras/ado-pull-requests-1"
     },
     "engines": {
         "vscode": "^1.109.0"
