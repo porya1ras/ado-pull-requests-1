@@ -7,6 +7,7 @@ export class AuthManager {
     private static instance: AuthManager;
     private session: vscode.AuthenticationSession | undefined;
     private secretStorage: vscode.SecretStorage | undefined;
+    private globalState: vscode.Memento | undefined;
 
     // Cache variables for session and tokens
     private cachedPat: string | null | undefined = undefined;
@@ -23,12 +24,23 @@ export class AuthManager {
 
     initialize(context: vscode.ExtensionContext) {
         this.secretStorage = context.secrets;
+        this.globalState = context.globalState;
     }
 
     clearCache() {
         this.cachedPat = undefined;
         this.cachedAccessToken = undefined;
         this.session = undefined;
+    }
+
+    async signOut(): Promise<void> {
+        if (this.secretStorage) {
+            await this.secretStorage.delete('ado_pat');
+        }
+        if (this.globalState) {
+            await this.globalState.update('adoPr.isLoggedOut', true);
+        }
+        this.clearCache();
     }
 
     async getSession(createIfNone: boolean = false): Promise<vscode.AuthenticationSession | undefined> {
@@ -38,13 +50,14 @@ export class AuthManager {
         this.session = await vscode.authentication.getSession('microsoft', [ADO_SCOPE], { createIfNone });
         if (this.session) {
             this.cachedAccessToken = this.session.accessToken;
+            if (this.globalState) {
+                await this.globalState.update('adoPr.isLoggedOut', false);
+            }
         }
         return this.session;
     }
 
     async getWebApi(): Promise<azdev.WebApi | undefined> {
-        // Return undefined here for now, as we need the Org URL to create the connection.
-        // We will simple return the session token for now.
         return undefined;
     }
 
@@ -53,6 +66,9 @@ export class AuthManager {
             await this.secretStorage.store('ado_pat', pat);
             this.cachedPat = pat;
             this.cachedAccessToken = undefined;
+            if (this.globalState) {
+                await this.globalState.update('adoPr.isLoggedOut', false);
+            }
         }
     }
 
@@ -73,6 +89,10 @@ export class AuthManager {
             return this.cachedAccessToken;
         }
 
+        if (this.globalState?.get<boolean>('adoPr.isLoggedOut')) {
+            return undefined;
+        }
+
         // Find PAT first as an override
         const pat = await this.getPat();
         if (pat) {
@@ -81,7 +101,7 @@ export class AuthManager {
         }
 
         try {
-            const session = await this.getSession(true);
+            const session = await this.getSession(false);
             this.cachedAccessToken = session?.accessToken;
             return this.cachedAccessToken;
         } catch (e) {
