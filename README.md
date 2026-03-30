@@ -5,7 +5,7 @@
 <h1 align="center">Azure DevOps Pull Requests</h1>
 
 <p align="center">
-  <strong>Browse, review, and manage Azure DevOps Pull Requests — without leaving VS Code.</strong>
+  <strong>A modern, high-performance Webview sidebar to browse, review, and manage Azure DevOps Pull Requests — without leaving VS Code.</strong>
 </p>
 
 <p align="center">
@@ -19,37 +19,38 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/VS%20Code-1.80+-blue?logo=visualstudiocode&logoColor=white" alt="VS Code 1.80+" />
+  <img src="https://img.shields.io/badge/VS%20Code-1.109.0+-blue?logo=visualstudiocode&logoColor=white" alt="VS Code 1.109.0+" />
   <img src="https://img.shields.io/badge/TypeScript-5.1-blue?logo=typescript&logoColor=white" alt="TypeScript" />
   <img src="https://img.shields.io/badge/Azure%20DevOps-REST%20API-0078D4?logo=azuredevops&logoColor=white" alt="Azure DevOps" />
-  <img src="https://img.shields.io/badge/license-MIT-green" alt="License MIT" />
+  <img src="https://img.shields.io/badge/UI-Modern%20Webview-FF4081?logo=web&logoColor=white" alt="Modern Webview UI" />
 </p>
 
 ---
 
 ## ✨ Overview
 
-**ADO Pull Requests** is a Visual Studio Code extension that brings your Azure DevOps pull request workflow directly into your editor. Select a project and repository, browse active PRs in a dedicated sidebar, inspect file-level diffs with a single click, and even send entire PRs to **GitHub Copilot Chat** for an AI-powered code review — all without opening a browser.
+**ADO Pull Requests** has been reimagined as a feature-rich **Webview Explorer**. It brings a professional, interactive interface to your VS Code sidebar, allowing you to instantly search repositories, filter PRs by source and target branches, and jump into detailed code reviews with AI assistance—all wrapped in a sleek, responsive design.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/porya1ras/ado-pull-requests-1/main/assets/preview.png" alt="Extension Preview" width="520" />
+  <!-- TODO: ADD IMAGE: Main Webview Explorer Overview -->
+  <img src="https://raw.githubusercontent.com/porya1ras/ado-pull-requests-1/main/assets/webview-overview.png" alt="Webview Explorer Overview" width="700" />
+  <br/><em>(New modern Webview-based sidebar with repository search and filters)</em>
 </p>
 
 ---
 
-## 🚀 Features
+## 🚀 Key Features
 
 | Feature                           | Description                                                                                                                                                                                                                                                                                                                                      |
 | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 🔐 **Microsoft SSO**               | Sign in with your Microsoft / Azure AD account using VS Code's built-in authentication — no PAT tokens required.                                                                                                                                                                                                                                 |
-| 📂 **Repository Picker**           | Browse your organization's projects and repositories via interactive quick-pick menus.                                                                                                                                                                                                                                                           |
-| 🌳 **PR Tree View**                | A dedicated Activity Bar panel lists all **active** pull requests, expandable to reveal every changed file.                                                                                                                                                                                                                                      |
-| 🎯 **Target Branch Filter**        | Filter your active pull requests dynamically by selecting a specific target branch from a quick-pick menu in the panel header.                                                                                                                                                                                                                   |
-| 🔀 **Inline Diff Viewer**          | Click any changed file to open a side-by-side diff powered by VS Code's native diff editor.                                                                                                                                                                                                                                                      |
-| 🤖 **Copilot Specialized Reviews** | Deep integration with the **GitHub Copilot background agent (`vscode.lm`)**. Features general code review alongside dedicated **DB Performance** and **UX Message** reviews. Analyzes the full PR diff quietly in the background, parses structured JSON findings, and opens an interactive webview to select and post comments directly to ADO. |
-| 🌐 **Open PR in Browser**          | Quickly jump to the PR on Azure DevOps from the tree view.                                                                                                                                                                                                                                                                                       |
-| 🔄 **Refresh on Demand**           | Instantly refresh the PR list from the sidebar toolbar.                                                                                                                                                                                                                                                                                          |
-| 🏷️ **Clean Branch Tracking**       | Expand any PR to instantly view a dedicated nested node detailing the source → target branch mapping, alongside author and description details in the tooltip.                                                                                                                                                                                   |
+| 🌐 **Modern Webview UI**          | A completely custom, high-performance sidebar built with modern CSS, smooth transitions, and a premium "glassmorphism" aesthetic.                                                                                                                                                                                                                |
+| 🔍 **Dynamic Repo Search**        | Quickly find and switch between any repository in your organization directly from the sidebar search box.                                                                                                                                                                                                                                       |
+| 🎯 **Dual Branch Filtering**      | Filter PRs by **both** Source and Target branches using dedicated dropdowns for precise workflow management.                                                                                                                                                                                                                                    |
+| 📄 **Nested PR Details**          | Click a PR to drill down into a detail view showing the description, author profile, and a complete file list without losing your context.                                                                                                                                                                                                       |
+| 🤖 **AI Review Ecosystem**        | Direct access to **Copilot**, **DB Performance**, and **UX Message** reviews via quick-action buttons in the PR detail view.                                                                                                                                                                                                                      |
+| 🔐 **Integrated Auth State**       | Visual feedback for your connection status (Signed in/out) with single-click authentication management in the sidebar and status bar.                                                                                                                                                                                                            |
+| ⏳ **Polished Loading States**     | Professional "Activating..." overlays and spinners ensure you're always informed during data fetching and extension initialization.                                                                                                                                                                                                              |
+| 🔀 **One-Click Diffing**          | Inspect changes instantly using VS Code's native side-by-side diff editor, triggered directly from the PR's file list.                                                                                                                                                                                                                           |
 
 ---
 
@@ -65,7 +66,7 @@ cd ado-pull-requests
 # Install dependencies
 npm install
 
-# Compile the extension
+# Compile and Bundle
 npm run compile
 ```
 
@@ -73,68 +74,59 @@ npm run compile
 
 1. Open the project folder in VS Code.
 2. Press **F5** (or **Run → Start Debugging**) to launch the **Extension Development Host**.
-3. The extension will be active in the new VS Code window.
+3. The **Azure DevOps** icon will appear in your Activity Bar.
 
 ---
 
 ## 🏁 Getting Started
 
-### 1. Sign In
+### 1. Unified Authentication
 
-Run the command **`ADO: Sign In`** from the Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`).  
-You'll be prompted to authenticate with your Microsoft account via VS Code's built-in auth flow.
+You can sign in directly from the **Connect** button in the sidebar if you're not logged in, or use the **`ADO: Sign In`** command. The extension uses Microsoft SSO, so no Personal Access Tokens are needed.
 
-### 2. Select a Repository
+<p align="center">
+  <!-- TODO: ADD IMAGE: Sign-in State in Webview -->
+  <img src="https://raw.githubusercontent.com/porya1ras/ado-pull-requests-1/main/assets/signin-state.png" alt="Sign-in State" width="350" />
+  <br/><em>(Seamless connection management within the view)</em>
+</p>
 
-Run **`ADO: Select Repository`**:
+### 2. Search & Select Repository
 
-1. **Organization URL** — Enter your Azure DevOps org URL (e.g. `https://dev.azure.com/myorg`). This is saved and reused automatically.
-2. **Project** — Pick a project from the list.
-3. **Repository** — Pick a repository to browse its pull requests.
+Use the search box at the top of the explorer to find any repository across your projects. Selecting a repository will instantly populate the list with active Pull Requests.
 
-### 3. Browse Pull Requests
+### 3. Browse & Filter
 
-Open the **ADO Pull Requests** panel from the Activity Bar (look for the `git-pull-request` icon).  
-All active PRs for the selected repository are shown in a tree view.
+Use the **Source Branch** and **Target Branch** filters to narrow down your view. The list updates in real-time as you select different branches.
 
 ---
 
 ## 📖 Usage
 
-### Viewing Changed Files
+### Navigation Workflow
 
-Expand any pull request node to see the list of changed files. Each file displays:
-
-- **Change type icon** — Added (`+`), Modified (`M`), Deleted (`−`), or Renamed (`R`)
-- **File name and full path**
-
-Click a file to open the **side-by-side diff viewer**.
-
-### AI Code Review & Automated Feedback
-
-Right-click any PR (or use the inline icons) to run a seamless background review powered by **GitHub Copilot** (`vscode.lm` Agent API):
-* 💬 **ADO: Send PR to AI Review** - General bug, logic, and security review
-* 🗄️ **ADO: DB Performance Review** - Specialized analysis for EF Core projections and N+1 query traps
-* 📝 **ADO: UX Message Review** - Enforces UK spelling, plain English clarity, and actionable help text
+The explorer uses a breadcrumb-style navigation:
+1. **List View**: Browse all PRs, search repos, and apply filters.
+2. **Detail View**: Click a PR to see its full details, including author (with quick mailto link) and the list of changed files.
+3. **Diff View**: Click any file in the detail view to open the VS Code diff editor.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/porya1ras/ado-pull-requests-1/main/assets/review-buttons.png" alt="Review Menu Buttons Context" width="520" />
-  <br/><em>(Place your screenshot of the context menu in assets/review-buttons.png)</em>
+  <!-- TODO: ADD IMAGE: PR Detail View and File List -->
+  <img src="https://raw.githubusercontent.com/porya1ras/ado-pull-requests-1/main/assets/detail-view.png" alt="PR Detail View" width="350" />
+  <br/><em>(Detailed PR view with integrated file explorer and AI actions)</em>
 </p>
 
-The extension builds a highly structured prompt including PR metadata and all changed file contents (up to 200 lines per file).
+### AI-Powered Code Reviews
 
-Once the AI generates its review:
-1. An **Interactive Webview** opens with the PR's overall Risk, Confidence scores, and a summary.
-2. All inline comments (bugs, style, performance) are shown in a **checklist** with severity icons (🔴 Blocker, 🟠 High, 🟡 Medium, 🔵 Low, ⚪ Nit).
-3. **Select/Deselect** comments as you see fit.
-4. Click **Post Selected Comments** to automatically publish them as specific threaded comments on the Azure DevOps pull request!
+From the PR Detail view, you can trigger specialized AI reviews:
+* 💬 **Copilot** - Logic, security, and general code quality.
+* 🗄️ **DB Perf** - Entity Framework optimizations and SQL performance.
+* 📝 **UX Review** - Language clarity, UK spelling, and user experience analysis.
 
-> **Note**: This requires the GitHub Copilot extension to be installed and signed in. If the agent request fails, the raw prompt is placed safely on your clipboard.
-
-### Open PR in Browser
-
-Click the 🔗 icon next to a PR to open it directly in your default browser on Azure DevOps.
+<p align="center">
+  <!-- TODO: ADD IMAGE: AI Review Results and Checklist -->
+  <img src="https://raw.githubusercontent.com/porya1ras/ado-pull-requests-1/main/assets/review-results.png" alt="AI Review Results Checklist" width="600" />
+  <br/><em>(Interactive AI review results with severity-coded checklist and automated posting)</em>
+</p>
 
 ---
 
@@ -142,93 +134,56 @@ Click the 🔗 icon next to a PR to open it directly in your default browser on 
 
 ```
 src/
-├── extension.ts          # Extension entry point — registers all commands & providers
-├── auth.ts               # Microsoft SSO authentication via VS Code Authentication API
-├── adoClient.ts          # Azure DevOps REST API client (projects, repos, PRs, file content)
-├── prTreeDataProvider.ts # TreeDataProvider for the PR explorer sidebar
-├── diffViewer.ts         # Virtual document content provider & diff command
-├── copilotReview.ts      # Sends PR diffs to the background Copilot agent for General Review
-├── dbPerformanceReview.ts# Sends PR diffs for specialized EF Core/SQL optimization review
-├── uxMessageReview.ts    # Sends PR diffs for UK English user-facing error message review
-├── postReviewComments.ts # JSON parser & helper functions to translate AI payload to ADO threads
-└── reviewWebview.ts      # Interactive UI to review, select, and post the generated comments
+├── prWebviewProvider.ts  # Main sidebar Webview logic (React-like state management)
+├── extension.ts          # Extension entry point & command registration
+├── auth.ts               # Microsoft SSO & Session management
+├── adoClient.ts          # Azure DevOps REST API wrapper
+├── diffViewer.ts         # Logic to fetch and display file diffs
+├── copilotReview.ts      # AI logic for General Reviews
+├── dbPerformanceReview.ts# AI logic for Database optimizations
+├── uxMessageReview.ts    # AI logic for UX/UI text reviews
+└── reviewWebview.ts      # Interactive UI for AI review selection & posting
 ```
-
-### Key Technologies
-
-- **[VS Code Extension API](https://code.visualstudio.com/api)** — Tree views, commands, authentication, diff editor
-- **[azure-devops-node-api](https://github.com/microsoft/azure-devops-node-api)** — Official Node.js client for Azure DevOps REST APIs
-- **Webpack** — Bundles the extension for fast activation
-- **TypeScript** — Full type safety across the codebase
 
 ---
 
 ## ⚙️ Available Commands
 
-| Command                        | ID                          | Description                                           |
-| ------------------------------ | --------------------------- | ----------------------------------------------------- |
-| **ADO: Sign In**               | `adoPr.signIn`              | Authenticate with Microsoft / Azure AD                |
-| **ADO: Select Repository**     | `adoPr.selectRepo`          | Pick org → project → repo                             |
-| **Refresh Pull Requests**      | `adoPr.refresh`             | Reload the PR list                                    |
-| **Filter by Target Branch**    | `adoPr.filterTargetBranch`  | Filter pull requests by their target branch           |
-| **View Diff**                  | `adoPr.viewFileDiff`        | Open side-by-side diff for a changed file             |
-| **Open PR in Browser**         | `adoPr.openPr`              | Open the PR page on Azure DevOps                      |
-| **Send PR to Copilot Review**  | `adoPr.copilotReview`       | Send PR changes to GitHub Copilot for general review  |
-| **ADO: DB Performance Review** | `adoPr.dbPerformanceReview` | Send PR changes to Copilot for DB and EF Core queries |
-| **ADO: UX Message Review**     | `adoPr.uxMessageReview`     | Send PR changes to Copilot for UX language/grammar    |
+| Command                      | ID                          | Description                                         |
+| ---------------------------- | --------------------------- | --------------------------------------------------- |
+| **ADO: Sign In**             | `adoPr.signIn`              | Authenticate with Microsoft / Azure AD              |
+| **ADO: Select Repository**   | `adoPr.selectRepo`          | Dynamic repo selection dialog                       |
+| **Sign Out**                 | `adoPr.signOut`             | Disconnect from Azure DevOps                        |
+| **Refresh PR List**          | `adoPr.refresh`             | Manually reload data in the webview                 |
+| **Send PR to AI Review**     | `adoPr.copilotReview`       | Trigger AI analysis via Copilot                     |
+| **ADO: DB Perf Review** | `adoPr.dbPerformanceReview` | Trigger specialized database analysis               |
+| **ADO: UX Review**     | `adoPr.uxMessageReview`     | Trigger specialized UX/Content analysis             |
 
 ---
 
 ## 🛠️ Development
 
-### Prerequisites
-
-- **Node.js** 18+ and **npm**
-- **VS Code** 1.80+
-
-### Scripts
-
 ```bash
 npm run compile       # Build with webpack (development)
 npm run watch         # Watch mode — rebuilds on file changes
-npm run package       # Production build with source maps
 npm run lint          # Run ESLint on src/
-npm run test          # Run tests
 ```
-
-### Debugging
-
-The project includes a `.vscode/launch.json` configuration. Press **F5** to:
-
-1. Compile the extension
-2. Launch a new VS Code window (Extension Development Host)
-3. Attach the debugger for breakpoints and step-through debugging
 
 ---
 
 ## 🤝 Contributing
 
-Contributions are welcome! Here's how to get started:
-
 1. **Fork** the repository
-2. **Create a branch** for your feature or fix: `git checkout -b feature/awesome-thing`
-3. **Commit** your changes with clear messages
-4. **Push** to your fork and open a **Pull Request**
-
-### Guidelines
-
-- Follow the existing code style (TypeScript strict mode, ESLint rules)
-- Add relevant tests for new features
-- Keep PRs focused — one feature or fix per PR
+2. **Branch**: `git checkout -b feature/ui-improvement`
+3. **Commit**: `git commit -m "Added glassmorphism to sidebar"`
+4. **Push & PR**: Open a Pull Request for review
 
 ---
 
 ## 📝 License
 
-This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
-
----
+This project is licensed under the **MIT License**.
 
 <p align="center">
-  Made with ❤️ for developers who live in VS Code
+  Built for developers who demand a premium Azure DevOps experience in VS Code.
 </p>

@@ -1,7 +1,8 @@
 import * as vscode from 'vscode';
 import { AuthManager } from './auth';
 import { AdoClient } from './adoClient';
-import { PrTreeDataProvider, PrNode, FileChangeNode } from './prTreeDataProvider';
+import { PrNode, FileChangeNode } from './prTreeDataProvider';
+import { PrWebviewProvider } from './prWebviewProvider';
 import { AdoPrContentProvider, ADO_PR_SCHEME, openFileDiff } from './diffViewer';
 import { sendPrToCopilotReview } from './copilotReview';
 import { sendPrToDbPerformanceReview } from './dbPerformanceReview';
@@ -15,7 +16,7 @@ export function activate(context: vscode.ExtensionContext) {
     authManager.initialize(context);
 
     // ── Auth ──────────────────────────────────────────────────────────
-    const signInDisposable = vscode.commands.registerCommand('adoPr.signIn', async () => {
+    const signInActionDisposable = vscode.commands.registerCommand('adoPr.signInAction', async () => {
         try {
             const method = await vscode.window.showQuickPick(['Microsoft Authentication', 'Personal Access Token (PAT)'], {
                 placeHolder: 'Select authentication method'
@@ -47,103 +48,82 @@ export function activate(context: vscode.ExtensionContext) {
 
     // ── Select Repo ──────────────────────────────────────────────────
     const selectRepoDisposable = vscode.commands.registerCommand('adoPr.selectRepo', async () => {
-        try {
-            const authManager = AuthManager.getInstance();
-            const token = await authManager.getAccessToken();
-            if (!token) {
-                await vscode.commands.executeCommand('adoPr.signIn');
-                if (!await authManager.getAccessToken()) { return; }
-            }
+        prWebviewProvider.refresh();
+        vscode.window.showInformationMessage("Repository selection is now available in the sidebar dropdown.");
+    });
 
-            // 1. Organisation URL
+    // ── Connection Status ───────────────────────────────────────────
+    const updateConnectionStatus = async (isConnecting: boolean = false) => {
+        const token = await authManager.getAccessToken();
+        const isConnected = !!token;
+        vscode.commands.executeCommand('setContext', 'adoPr.isConnected', isConnected);
+        vscode.commands.executeCommand('setContext', 'adoPr.isConnecting', isConnecting);
+    };
+
+    // ── Webview Provider ────────────────────────────────────────────
+    const prWebviewProvider = new PrWebviewProvider(context.extensionUri, context);
+    vscode.window.registerWebviewViewProvider(PrWebviewProvider.viewType, prWebviewProvider);
+
+    // Initial load and status update
+    (async () => {
+        try {
+            await updateConnectionStatus(true);
+            await prWebviewProvider.updateState();
+        } finally {
+            await updateConnectionStatus(false);
+        }
+    })();
+
+    const signOutDisposable = vscode.commands.registerCommand('adoPr.signOut', async () => {
+        try {
+            await updateConnectionStatus(true);
+            await authManager.signOut();
+            
+            // Wipe configuration
+            await context.globalState.update('adoPlugin.orgUrl', undefined);
+            await context.workspaceState.update('adoPlugin.selectedRepo', undefined);
+            
+            await prWebviewProvider.updateState();
+            vscode.window.showInformationMessage("Successfully signed out and cleared session data.");
+        } finally {
+            await updateConnectionStatus(false);
+        }
+    });
+
+    const refreshLoadingDisposable = vscode.commands.registerCommand('adoPr.refreshLoading', () => {
+        vscode.window.showInformationMessage("Connecting to Azure DevOps...");
+    });
+
+    const signInCommandDisposable = vscode.commands.registerCommand('adoPr.signIn', async () => {
+        try {
+            await updateConnectionStatus(true);
+            await vscode.commands.executeCommand('adoPr.signInAction');
+            authManager.clearCache();
+            
+            // Check if Org URL is missing (could happen after sign out)
             let orgUrl = context.globalState.get<string>('adoPlugin.orgUrl');
             if (!orgUrl) {
                 orgUrl = await vscode.window.showInputBox({
-                    prompt: 'Enter your Azure DevOps Organization URL',
-                    placeHolder: 'https://dev.azure.com/myorg',
-                    ignoreFocusOut: true,
+                    prompt: 'Enter your Azure DevOps Organization URL (e.g., https://dev.azure.com/YourOrg)',
+                    placeHolder: 'https://dev.azure.com/YourOrg',
+                    ignoreFocusOut: true
                 });
-                if (!orgUrl) { return; }
-                if (!orgUrl.startsWith('http')) {
-                    orgUrl = `https://dev.azure.com/${orgUrl}`;
+                if (orgUrl) {
+                    await context.globalState.update('adoPlugin.orgUrl', orgUrl);
+                    vscode.window.showInformationMessage(`Organization URL set to: ${orgUrl}`);
                 }
-                await context.globalState.update('adoPlugin.orgUrl', orgUrl);
             }
 
-            const client = new AdoClient(orgUrl);
-
-            // 2. Project
-            const projects = await vscode.window.withProgress({
-                location: vscode.ProgressLocation.Notification,
-                title: 'Fetching projects…',
-            }, () => client.getProjects());
-
-            const project = await vscode.window.showQuickPick(
-                projects.map(p => ({ label: p.name!, description: p.description, id: p.id! })),
-                { placeHolder: 'Select a Project' },
-            );
-            if (!project) { return; }
-
-            // 3. Repo
-            const repos = await vscode.window.withProgress({
-                location: vscode.ProgressLocation.Notification,
-                title: 'Fetching repositories…',
-            }, () => client.getRepos(project.id));
-
-            const repo = await vscode.window.showQuickPick(
-                repos.map(r => ({
-                    label: r.name!,
-                    description: r.remoteUrl,
-                    repoId: r.id!,
-                    projectId: project.id,
-                })),
-                { placeHolder: 'Select a Repository' },
-            );
-            if (!repo) { return; }
-
-            // 4. Save & refresh
-            await context.workspaceState.update('adoPlugin.selectedRepo', {
-                orgUrl,
-                projectId: repo.projectId,
-                repoId: repo.repoId,
-                name: repo.label,
-            });
-            vscode.window.showInformationMessage(`Selected repository: ${repo.label}`);
-            vscode.commands.executeCommand('adoPr.refresh');
-        } catch (error) {
-            vscode.window.showErrorMessage(
-                `Error selecting repo: ${error instanceof Error ? error.message : error}`,
-            );
+            if (orgUrl) {
+                await prWebviewProvider.updateState();
+            } else {
+                vscode.window.showWarningMessage('Organization URL is required to load Pull Requests.');
+            }
+        } finally {
+            await updateConnectionStatus(false);
         }
     });
 
-    // ── Tree Provider ────────────────────────────────────────────────
-    const prProvider = new PrTreeDataProvider(context);
-    vscode.window.registerTreeDataProvider('ado-pr-explorer', prProvider);
-
-    const refreshDisposable = vscode.commands.registerCommand('adoPr.refresh', () => {
-        AuthManager.getInstance().clearCache();
-        prProvider.refresh();
-    });
-
-    // ── Filter ───────────────────────────────────────────────────────
-    const filterTargetBranchDisposable = vscode.commands.registerCommand('adoPr.filterTargetBranch', async () => {
-        const branches = await prProvider.getAvailableTargetBranches();
-        if (branches.length === 0) {
-            vscode.window.showInformationMessage('No pull requests or branches found to filter.');
-            return;
-        }
-
-        const choices = ['(Show All branches)', ...branches];
-        const selected = await vscode.window.showQuickPick(choices, {
-            placeHolder: 'Select a target branch to filter Pull Requests by',
-        });
-
-        if (selected) {
-            const filter = selected === '(Show All branches)' ? undefined : selected;
-            prProvider.setTargetBranchFilter(filter);
-        }
-    });
 
     // ── Diff Content Provider ────────────────────────────────────────
     const contentProvider = new AdoPrContentProvider();
@@ -173,7 +153,7 @@ export function activate(context: vscode.ExtensionContext) {
         },
     );
 
-    // ── Copilot Review ───────────────────────────────────────────────
+    // ── AI Review Commands ───────────────────────────────────────────
     const copilotReviewDisposable = vscode.commands.registerCommand(
         'adoPr.copilotReview',
         async (node: PrNode) => {
@@ -195,14 +175,13 @@ export function activate(context: vscode.ExtensionContext) {
         },
     );
 
-
-
     // ── Subscriptions ────────────────────────────────────────────────
     context.subscriptions.push(
-        signInDisposable,
+        signInActionDisposable,
         selectRepoDisposable,
-        refreshDisposable,
-        filterTargetBranchDisposable,
+        signOutDisposable,
+        refreshLoadingDisposable,
+        signInCommandDisposable,
         viewFileDiffDisposable,
         openPrDisposable,
         copilotReviewDisposable,

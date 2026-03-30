@@ -2,7 +2,7 @@
     "name": "ado-pull-requests1",
     "displayName": "Azure DevOps Pull Requests Reviewer",
     "description": "List and manage Azure DevOps Pull Requests",
-    "version": "0.0.7",
+    "version": "1.0.0",
     "publisher": "Porya0Ras",
     "icon": "assets/icon.png",
     "repository": {
@@ -28,9 +28,19 @@
                 "title": "ADO: Select Repository"
             },
             {
-                "command": "adoPr.refresh",
-                "title": "Refresh Pull Requests",
-                "icon": "$(refresh)"
+                "command": "adoPr.signOut",
+                "title": "Connected (Click to Sign Out)",
+                "icon": "$(plug)"
+            },
+            {
+                "command": "adoPr.refreshLoading",
+                "title": "Connecting to DevOps...",
+                "icon": "$(sync~spin)"
+            },
+            {
+                "command": "adoPr.signIn",
+                "title": "Disconnected (Click to Sign In)",
+                "icon": "$(debug-disconnect)"
             },
             {
                 "command": "adoPr.viewFileDiff",
@@ -55,28 +65,23 @@
                 "command": "adoPr.openPr",
                 "title": "Open PR in Browser",
                 "icon": "$(link-external)"
-            },
-            {
-                "command": "adoPr.filterTargetBranch",
-                "title": "Filter by Target Branch",
-                "icon": "$(filter)"
             }
         ],
         "menus": {
             "view/title": [
                 {
-                    "command": "adoPr.refresh",
-                    "when": "view == ado-pr-explorer",
+                    "command": "adoPr.signOut",
+                    "when": "view == ado-pr-explorer && adoPr.isConnected && !adoPr.isConnecting",
                     "group": "navigation"
                 },
                 {
-                    "command": "adoPr.selectRepo",
-                    "when": "view == ado-pr-explorer",
+                    "command": "adoPr.refreshLoading",
+                    "when": "view == ado-pr-explorer && adoPr.isConnecting",
                     "group": "navigation"
                 },
                 {
-                    "command": "adoPr.filterTargetBranch",
-                    "when": "view == ado-pr-explorer",
+                    "command": "adoPr.signIn",
+                    "when": "view == ado-pr-explorer && !adoPr.isConnected && !adoPr.isConnecting",
                     "group": "navigation"
                 }
             ],
@@ -107,7 +112,7 @@
             "activitybar": [
                 {
                     "id": "ado-pr-explorer",
-                    "title": "ADO Pull Requests",
+                    "title": "Azure DevOps",
                     "icon": "$(git-pull-request)"
                 }
             ]
@@ -116,7 +121,9 @@
             "ado-pr-explorer": [
                 {
                     "id": "ado-pr-explorer",
-                    "name": "Pull Requests"
+                    "name": "Explorer",
+                    "type": "webview",
+                    "icon": "$(git-pull-request)"
                 }
             ]
         }

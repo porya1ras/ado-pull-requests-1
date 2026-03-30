@@ -16,6 +16,7 @@ export class AdoPrContentProvider implements vscode.TextDocumentContentProvider 
     private _cache = new Map<string, string>();
 
     async provideTextDocumentContent(uri: vscode.Uri): Promise<string> {
+        console.log(`Providing content for: ${uri.toString()}`);
         const cached = this._cache.get(uri.toString());
         if (cached !== undefined) { return cached; }
 
@@ -24,8 +25,10 @@ export class AdoPrContentProvider implements vscode.TextDocumentContentProvider 
         const objectId = params.get('objectId')!;
         const orgUrl = params.get('orgUrl')!;
 
+        console.log(`Fetching blob: repo=${repoId}, objectId=${objectId}, org=${orgUrl}`);
+
         if (!objectId || objectId === '0000000000000000000000000000000000000000') {
-            return ''; // new or deleted — no content on this side
+            return ''; 
         }
 
         try {
@@ -34,6 +37,7 @@ export class AdoPrContentProvider implements vscode.TextDocumentContentProvider 
             this._cache.set(uri.toString(), content);
             return content;
         } catch (err) {
+            console.error('Failed to fetch file content:', err);
             vscode.window.showErrorMessage(`Failed to fetch file content: ${err}`);
             return `// Error fetching content: ${err}`;
         }
@@ -48,8 +52,10 @@ export async function openFileDiff(node: FileChangeNode): Promise<void> {
     const objectId: string = change.item?.objectId ?? '';
     const originalObjectId: string = change.originalObjectId ?? change.item?.originalObjectId ?? '';
 
+    console.log(`Opening diff for ${filePath}: left=${originalObjectId}, right=${objectId}`);
+
     const makeUri = (oid: string, side: string) =>
-        vscode.Uri.parse(`${ADO_PR_SCHEME}:${filePath}`)
+        vscode.Uri.parse(`${ADO_PR_SCHEME}:${filePath.startsWith('/') ? filePath : '/' + filePath}`)
             .with({
                 query: `repoId=${node.repoId}&objectId=${oid}&orgUrl=${encodeURIComponent(node.orgUrl)}&side=${side}`,
             });
@@ -57,7 +63,7 @@ export async function openFileDiff(node: FileChangeNode): Promise<void> {
     const leftUri = makeUri(originalObjectId, 'left');
     const rightUri = makeUri(objectId, 'right');
 
-    const title = `${filePath} (PR #${node.pr.pullRequestId})`;
+    const title = `${filePath.split('/').pop() || filePath} (PR #${node.pr.pullRequestId})`;
 
     await vscode.commands.executeCommand('vscode.diff', leftUri, rightUri, title);
 }
