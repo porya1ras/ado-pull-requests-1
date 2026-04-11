@@ -524,6 +524,17 @@ export class PrWebviewProvider implements vscode.WebviewViewProvider {
                         <div class="detail-branches" id="det-branches"></div>
                         <div class="pr-meta" id="det-meta"></div>
                         
+                        <div class="filter-row" style="margin-top: 8px;">
+                            <label class="filter-label">File Status</label>
+                            <select id="file-status-filter" onchange="renderFilteredFiles()" style="margin-top: 4px;">
+                                <option value="">All Files</option>
+                                <option value="A">Added</option>
+                                <option value="M">Modified</option>
+                                <option value="D">Deleted</option>
+                                <option value="R">Renamed</option>
+                            </select>
+                        </div>
+                        
                         <div class="review-actions">
                             <button class="review-btn" onclick="aiReview('copilot')">
                                 <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 0a8 8 0 1 0 8 8 8.009 8.009 0 0 0-8-8zm3.036 12.016a.434.434 0 0 1-.444.42.434.434 0 0 1-.444-.42 5.034 5.034 0 0 0-8.296-3.875.434.434 0 0 1-.611-.013.434.434 0 0 1 .013-.614 5.868 5.868 0 0 1 9.782 4.502z"/></svg>
@@ -551,7 +562,7 @@ export class PrWebviewProvider implements vscode.WebviewViewProvider {
 
                 <script>
                     const vscode = acquireVsCodeApi();
-                    let allPrs = [], repos = [], currentPr = null;
+                    let allPrs = [], repos = [], currentPr = null, currentPrFiles = [];
                     const search = document.getElementById('repo-search'), list = document.getElementById('repo-list');
 
                     function showDetails(show) {
@@ -714,21 +725,37 @@ export class PrWebviewProvider implements vscode.WebviewViewProvider {
                             </div>
                         \`;
 
+                        currentPrFiles = files;
+                        document.getElementById('file-status-filter').value = ''; // Reset filter
+                        renderFilteredFiles();
+
+                        showDetails(true);
+                    }
+
+                    function renderFilteredFiles() {
                         const fl = document.getElementById('det-files');
                         fl.innerHTML = '';
-                        files.forEach(f => {
-                            const fi = document.createElement('div');
-                            fi.className = 'file-item';
+                        const p = currentPr;
+                        if (!p) return;
+                        
+                        const statusFilter = document.getElementById('file-status-filter').value;
+
+                        currentPrFiles.forEach(f => {
                             let char = 'M';
                             if (f.type & 1) char = 'A'; 
                             else if (f.type & 16) char = 'D'; 
                             else if (f.type & 8) char = 'R';
                             else if (f.type & 2) char = 'M';
+                            
+                            if (statusFilter && char !== statusFilter) return;
+
+                            const fi = document.createElement('div');
+                            fi.className = 'file-item';
                             fi.innerHTML = \`<span class="file-icon \${char}">\${char}</span><span class="file-name" title="\${f.path}">\${f.name}</span>\`;
                             fi.onclick = () => {
                                 vscode.postMessage({
                                     type: 'openFileDiff',
-                                    prId, repoId: p.repoId, orgUrl: p.orgUrl,
+                                    prId: p.id, repoId: p.repoId, orgUrl: p.orgUrl,
                                     path: f.path, originalPath: f.originalPath, changeType: f.type, objectId: f.objectId, originalObjectId: f.originalObjectId, baseCommitId: f.baseCommitId
                                 });
                             };
