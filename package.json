@@ -2,7 +2,7 @@
     "name": "ado-pull-requests1",
     "displayName": "Azure DevOps Pull Requests Reviewer",
     "description": "List and manage Azure DevOps Pull Requests",
-    "version": "1.0.0",
+    "version": "1.1.1",
     "publisher": "Porya0Ras",
     "icon": "assets/icon.png",
     "repository": {
@@ -14,6 +14,14 @@
     },
     "categories": [
         "Other"
+    ],
+    "keywords": [
+        "ado",
+        "azure devops",
+        "code review",
+        "comments preview",
+        "pull request",
+        "ai review"
     ],
     "activationEvents": [],
     "main": "./dist/extension.js",
