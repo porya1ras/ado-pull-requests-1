@@ -36,7 +36,7 @@ export async function sendPrToUxMessageReview(node: PrNode): Promise<void> {
             const changedFiles: string[] = [];
             for (const entry of changes.changeEntries) {
                 const e = entry as any;
-                const path: string = e.item?.path ?? 'unknown';
+                const path: string = e.item?.path ?? e.originalItem?.path ?? 'unknown';
                 const objectId: string = e.item?.objectId ?? '';
                 const changeType = changeTypeString(entry.changeType);
 

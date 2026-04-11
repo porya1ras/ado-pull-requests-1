@@ -237,13 +237,16 @@ export class PrWebviewProvider implements vscode.WebviewViewProvider {
             const latest = iterations[iterations.length - 1];
             const changes = await client.getPullRequestIterationChanges(repoId, prId, latest.id!);
             
-            const files = (changes.changeEntries || []).map(c => ({
-                path: c.item?.path,
-                name: c.item?.path?.split('/').pop(),
-                type: c.changeType,
-                objectId: c.item?.objectId,
-                originalObjectId: (c as any).originalObjectId || (c.item as any).originalObjectId,
-            }));
+            const files = (changes.changeEntries || []).map(c => {
+                const item = c.item || (c as any).originalItem;
+                return {
+                    path: item?.path,
+                    name: item?.path?.split('/').pop(),
+                    type: c.changeType,
+                    objectId: c.item?.objectId,
+                    originalObjectId: (c as any).originalObjectId || (c as any).originalItem?.objectId,
+                };
+            });
 
             this._view.webview.postMessage({
                 type: 'showPrDetails',
