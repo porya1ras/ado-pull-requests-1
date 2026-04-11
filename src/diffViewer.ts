@@ -48,9 +48,12 @@ export class AdoPrContentProvider implements vscode.TextDocumentContentProvider 
 
 export async function openFileDiff(node: FileChangeNode): Promise<void> {
     const change = node.change as any;
-    const filePath: string = change.item?.path ?? 'unknown';
+    const item = change.item || change.originalItem;
+    const filePath: string = item?.path ?? 'unknown';
     const objectId: string = change.item?.objectId ?? '';
-    const originalObjectId: string = change.originalObjectId ?? change.item?.originalObjectId ?? '';
+    const originalObjectId: string = change.originalObjectId ?? change.originalItem?.objectId ?? item?.originalObjectId ?? '';
+
+    console.log(`Opening diff for ${filePath}: left=${originalObjectId}, right=${objectId}`);
 
     console.log(`Opening diff for ${filePath}: left=${originalObjectId}, right=${objectId}`);
 

@@ -224,7 +224,8 @@ export class PrTreeDataProvider implements vscode.TreeDataProvider<PrTreeNode> {
     }
 
     private fileTreeItem(node: FileChangeNode): vscode.TreeItem {
-        const filePath = (node.change as any).item?.path as string | undefined;
+        const item = (node.change as any).item || (node.change as any).originalItem;
+        const filePath = item?.path as string | undefined;
         const label = filePath ? filePath.split('/').pop()! : 'unknown file';
         const ct = node.change.changeType;
 

@@ -39,9 +39,9 @@ export async function sendPrToCopilotReview(node: PrNode): Promise<void> {
             const diffParts: string[] = [];
             for (const entry of changes.changeEntries) {
                 const e = entry as any;
-                const path: string = e.item?.path ?? 'unknown';
+                const path: string = e.item?.path ?? e.originalItem?.path ?? 'unknown';
                 const objectId: string = e.item?.objectId ?? '';
-                const originalObjectId: string = e.originalObjectId ?? e.item?.originalObjectId ?? '';
+                const originalObjectId: string = e.originalObjectId ?? e.originalItem?.objectId ?? e.item?.originalObjectId ?? '';
                 const changeType = changeTypeString(entry.changeType);
 
                 diffParts.push(`### ${changeType} ${path}`);
