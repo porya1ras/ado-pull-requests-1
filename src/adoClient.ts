@@ -79,6 +79,16 @@ export class AdoClient {
         return await this.streamToString(stream);
     }
 
+    async getFileContentByVersion(repoId: string, path: string, commitId: string): Promise<string> {
+        const gitApi = await this.getGitApi();
+        const versionDescriptor: GitInterfaces.GitVersionDescriptor = {
+            version: commitId,
+            versionType: GitInterfaces.GitVersionType.Commit
+        };
+        const stream = await gitApi.getItemText(repoId, path, undefined, undefined, GitInterfaces.VersionControlRecursionType.None, false, false, false, versionDescriptor);
+        return await this.streamToString(stream);
+    }
+
     private streamToString(stream: NodeJS.ReadableStream): Promise<string> {
         return new Promise((resolve, reject) => {
             const chunks: Uint8Array[] = [];

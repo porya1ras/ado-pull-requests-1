@@ -22,22 +22,37 @@ export class AdoPrContentProvider implements vscode.TextDocumentContentProvider 
 
         const params = new URLSearchParams(uri.query);
         const repoId = params.get('repoId')!;
-        const objectId = params.get('objectId')!;
+        const objectId = params.get('objectId');
+        const commitId = params.get('commitId');
+        const path = params.get('path');
         const orgUrl = params.get('orgUrl')!;
 
-        console.log(`Fetching blob: repo=${repoId}, objectId=${objectId}, org=${orgUrl}`);
+        console.log(`Fetching blob: repo=${repoId}, objectId=${objectId}, commitId=${commitId}, path=${path}, org=${orgUrl}`);
 
-        if (!objectId || objectId === '0000000000000000000000000000000000000000') {
+        if ((!objectId || objectId === '0000000000000000000000000000000000000000') && !commitId) {
             return ''; 
         }
 
         try {
             const client = new AdoClient(orgUrl);
-            const content = await client.getFileContent(repoId, objectId);
+            let content = '';
+            if (objectId && objectId !== '0000000000000000000000000000000000000000') {
+               content = await client.getFileContent(repoId, objectId);
+            } else if (commitId && path) {
+               content = await client.getFileContentByVersion(repoId, path, commitId);
+               // Azure DevOps API stream might return a JSON error payload instead of throwing an HTTP error for missing items
+               if (content && content.startsWith('{') && content.includes('"typeKey":"GitItemNotFoundException"')) {
+                   content = '';
+               }
+            }
             this._cache.set(uri.toString(), content);
             return content;
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to fetch file content:', err);
+            if (err?.message && err.message.toLowerCase().includes('could not be found')) {
+                // Return empty if the file doesn't exist in that commit (e.g., added file)
+                return '';
+            }
             vscode.window.showErrorMessage(`Failed to fetch file content: ${err}`);
             return `// Error fetching content: ${err}`;
         }
@@ -50,21 +65,22 @@ export async function openFileDiff(node: FileChangeNode): Promise<void> {
     const change = node.change as any;
     const item = change.item || change.originalItem;
     const filePath: string = item?.path ?? 'unknown';
+    const originalPath: string = change.originalPath ?? filePath;
     const objectId: string = change.item?.objectId ?? '';
     const originalObjectId: string = change.originalObjectId ?? change.originalItem?.objectId ?? item?.originalObjectId ?? '';
+    const baseCommitId: string = change.baseCommitId ?? '';
 
-    console.log(`Opening diff for ${filePath}: left=${originalObjectId}, right=${objectId}`);
+    console.log(`Opening diff for ${filePath}: left=${originalObjectId}, right=${objectId}, baseCommit=${baseCommitId}`);
 
-    console.log(`Opening diff for ${filePath}: left=${originalObjectId}, right=${objectId}`);
+    const makeUri = (oid: string, side: string, targetPath: string, commitId: string) => {
+        let qs = `repoId=${node.repoId}&orgUrl=${encodeURIComponent(node.orgUrl)}&side=${side}&path=${encodeURIComponent(targetPath)}`;
+        if (oid) { qs += `&objectId=${oid}`; }
+        if (commitId) { qs += `&commitId=${commitId}`; }
+        return vscode.Uri.parse(`${ADO_PR_SCHEME}:${targetPath.startsWith('/') ? targetPath : '/' + targetPath}`).with({ query: qs });
+    };
 
-    const makeUri = (oid: string, side: string) =>
-        vscode.Uri.parse(`${ADO_PR_SCHEME}:${filePath.startsWith('/') ? filePath : '/' + filePath}`)
-            .with({
-                query: `repoId=${node.repoId}&objectId=${oid}&orgUrl=${encodeURIComponent(node.orgUrl)}&side=${side}`,
-            });
-
-    const leftUri = makeUri(originalObjectId, 'left');
-    const rightUri = makeUri(objectId, 'right');
+    const leftUri = makeUri(originalObjectId, 'left', originalPath, baseCommitId);
+    const rightUri = makeUri(objectId, 'right', filePath, '');
 
     const title = `${filePath.split('/').pop() || filePath} (PR #${node.pr.pullRequestId})`;
 

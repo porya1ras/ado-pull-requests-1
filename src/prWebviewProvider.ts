@@ -281,15 +281,19 @@ export class PrWebviewProvider implements vscode.WebviewViewProvider {
 
       const files = (changes.changeEntries || []).map((c) => {
         const item = c.item || (c as any).originalItem;
+        const finalPath = item?.path || (c as any).originalPath || 'unknown';
+        const name = finalPath.split('/').pop() || 'unknown';
         return {
-          path: item?.path,
-          name: item?.path?.split('/').pop(),
+          path: finalPath,
+          name: name,
           type: c.changeType,
           objectId: c.item?.objectId,
           originalObjectId:
             (c as any).originalObjectId || (c as any).originalItem?.objectId,
+          originalPath: (c as any).originalPath || item?.path,
+          baseCommitId: latest.commonRefCommit?.commitId,
         };
-      });
+      }).sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
 
       this._view.webview.postMessage({
         type: 'showPrDetails',
@@ -318,7 +322,9 @@ export class PrWebviewProvider implements vscode.WebviewViewProvider {
       change: {
         changeType: data.changeType,
         item: { path: data.path, objectId: data.objectId },
+        originalPath: data.originalPath,
         originalObjectId: data.originalObjectId,
+        baseCommitId: data.baseCommitId,
       } as any,
     };
     await openFileDiff(node as any);
@@ -714,13 +720,16 @@ export class PrWebviewProvider implements vscode.WebviewViewProvider {
                             const fi = document.createElement('div');
                             fi.className = 'file-item';
                             let char = 'M';
-                            if (f.type & 1) char = 'A'; else if (f.type & 4) char = 'D'; else if (f.type & 8) char = 'R';
+                            if (f.type & 1) char = 'A'; 
+                            else if (f.type & 16) char = 'D'; 
+                            else if (f.type & 8) char = 'R';
+                            else if (f.type & 2) char = 'M';
                             fi.innerHTML = \`<span class="file-icon \${char}">\${char}</span><span class="file-name" title="\${f.path}">\${f.name}</span>\`;
                             fi.onclick = () => {
                                 vscode.postMessage({
                                     type: 'openFileDiff',
                                     prId, repoId: p.repoId, orgUrl: p.orgUrl,
-                                    path: f.path, changeType: f.type, objectId: f.objectId, originalObjectId: f.originalObjectId
+                                    path: f.path, originalPath: f.originalPath, changeType: f.type, objectId: f.objectId, originalObjectId: f.originalObjectId, baseCommitId: f.baseCommitId
                                 });
                             };
                             fl.appendChild(fi);

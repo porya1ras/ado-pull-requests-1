@@ -214,13 +214,24 @@ export class PrTreeDataProvider implements vscode.TreeDataProvider<PrTreeNode> {
         return [];
       }
 
-      const result = changes.changeEntries.map((c) => ({
-        kind: 'file' as const,
-        change: c as GitInterfaces.GitPullRequestChange,
-        pr: node.pr,
-        repoId: node.repoId,
-        orgUrl: node.orgUrl,
-      }));
+      const result = changes.changeEntries.map((c) => {
+        const enhancedChange = { ...c } as any;
+        enhancedChange.baseCommitId = latestIteration.commonRefCommit?.commitId;
+        enhancedChange.originalPath = (c as any).originalPath || (c as any).item?.path;
+        return {
+          kind: 'file' as const,
+          change: enhancedChange as GitInterfaces.GitPullRequestChange,
+          pr: node.pr,
+          repoId: node.repoId,
+          orgUrl: node.orgUrl,
+        };
+      }).sort((a, b) => {
+        const pathA = (a.change as any).originalPath || a.change.item?.path || '';
+        const pathB = (b.change as any).originalPath || b.change.item?.path || '';
+        const nameA = pathA.split('/').pop() || '';
+        const nameB = pathB.split('/').pop() || '';
+        return nameA.localeCompare(nameB, undefined, { numeric: true, sensitivity: 'base' });
+      });
       this._changedFilesCache.set(prId, result);
       return result;
     } catch (err) {
@@ -274,7 +285,7 @@ export class PrTreeDataProvider implements vscode.TreeDataProvider<PrTreeNode> {
 
   private fileTreeItem(node: FileChangeNode): vscode.TreeItem {
     const item = (node.change as any).item || (node.change as any).originalItem;
-    const filePath = item?.path as string | undefined;
+    const filePath = item?.path as string | undefined || (node.change as any).originalPath as string | undefined;
     const label = filePath ? filePath.split('/').pop()! : 'unknown file';
     const ct = node.change.changeType;
 
