@@ -552,7 +552,7 @@ export async function postReviewCommentsFromJson(
         }
 
         vscode.window.showInformationMessage(
-          `✅ Successfully posted ${posted} comment${posted !== 1 ? 's' : ''} to PR #${prId}`,
+          `Successfully posted ${posted} comment${posted !== 1 ? 's' : ''} to PR #${prId}`,
         );
       } catch (err) {
         vscode.window.showErrorMessage(

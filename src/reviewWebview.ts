@@ -123,7 +123,7 @@ export class ReviewWebviewPanel {
                         progress.report({ increment: (1 / totalToPost) * 100 });
                     }
 
-                    vscode.window.showInformationMessage(`✅ Successfully posted ${posted} comments to PR #${prId}`);
+                    vscode.window.showInformationMessage(`Successfully posted ${posted} comments to PR #${prId}`);
                     this.dispose(); // Close webview when done
                 } catch (err) {
                     vscode.window.showErrorMessage(`Error posting comments: ${err}`);
