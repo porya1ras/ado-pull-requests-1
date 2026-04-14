@@ -426,8 +426,10 @@ export class PrWebviewProvider implements vscode.WebviewViewProvider {
                     .review-btn svg { width: 14px; height: 14px; }
 
                     .file-list { flex: 1; overflow-y: auto; padding: 8px; }
-                    .file-item { padding: 6px 10px; cursor: pointer; border-radius: 4px; display: flex; align-items: center; gap: 8px; margin-bottom: 2px; }
-                    .file-item:hover { background: var(--item-hover); }
+                    .file-item { padding: 6px 10px; cursor: pointer; border-radius: 4px; display: flex; align-items: center; gap: 8px; margin-bottom: 2px; transition: background 0.1s ease; }
+                    .file-item:hover { background: var(--item-hover); outline: 1px solid var(--vscode-focusBorder); outline-offset: -1px; }
+                    .file-item.active { background: var(--item-active); color: var(--vscode-list-activeSelectionForeground); }
+                    .file-item.active .file-name { font-weight: 600; }
                     .file-icon { font-size: 10px; font-weight: bold; width: 14px; text-align: center; }
                     .file-icon.A { color: #4ec9b0; }
                     .file-icon.M { color: #ce9178; }
@@ -562,7 +564,7 @@ export class PrWebviewProvider implements vscode.WebviewViewProvider {
 
                 <script>
                     const vscode = acquireVsCodeApi();
-                    let allPrs = [], repos = [], currentPr = null, currentPrFiles = [];
+                    let allPrs = [], repos = [], currentPr = null, currentPrFiles = [], activeFilePath = null;
                     const search = document.getElementById('repo-search'), list = document.getElementById('repo-list');
 
                     function showDetails(show) {
@@ -726,6 +728,7 @@ export class PrWebviewProvider implements vscode.WebviewViewProvider {
                         \`;
 
                         currentPrFiles = files;
+                        activeFilePath = null; // Reset selection when PR changes
                         document.getElementById('file-status-filter').value = ''; // Reset filter
                         renderFilteredFiles();
 
@@ -750,9 +753,11 @@ export class PrWebviewProvider implements vscode.WebviewViewProvider {
                             if (statusFilter && char !== statusFilter) return;
 
                             const fi = document.createElement('div');
-                            fi.className = 'file-item';
+                            fi.className = 'file-item' + (f.path === activeFilePath ? ' active' : '');
                             fi.innerHTML = \`<span class="file-icon \${char}">\${char}</span><span class="file-name" title="\${f.path}">\${f.name}</span>\`;
                             fi.onclick = () => {
+                                activeFilePath = f.path;
+                                renderFilteredFiles();
                                 vscode.postMessage({
                                     type: 'openFileDiff',
                                     prId: p.id, repoId: p.repoId, orgUrl: p.orgUrl,
