@@ -73,7 +73,7 @@ export async function openFileDiff(node: FileChangeNode): Promise<void> {
     console.log(`Opening diff for ${filePath}: left=${originalObjectId}, right=${objectId}, baseCommit=${baseCommitId}`);
 
     const makeUri = (oid: string, side: string, targetPath: string, commitId: string) => {
-        let qs = `repoId=${node.repoId}&orgUrl=${encodeURIComponent(node.orgUrl)}&side=${side}&path=${encodeURIComponent(targetPath)}`;
+        let qs = `repoId=${node.repoId}&orgUrl=${encodeURIComponent(node.orgUrl)}&prId=${node.pr.pullRequestId}&side=${side}&path=${encodeURIComponent(targetPath)}`;
         if (oid) { qs += `&objectId=${oid}`; }
         if (commitId) { qs += `&commitId=${commitId}`; }
         return vscode.Uri.parse(`${ADO_PR_SCHEME}:${targetPath.startsWith('/') ? targetPath : '/' + targetPath}`).with({ query: qs });

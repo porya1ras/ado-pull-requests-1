@@ -7,6 +7,7 @@ import { AdoPrContentProvider, ADO_PR_SCHEME, openFileDiff } from './diffViewer'
 import { sendPrToCopilotReview } from './copilotReview';
 import { sendPrToDbPerformanceReview } from './dbPerformanceReview';
 import { sendPrToUxMessageReview } from './uxMessageReview';
+import { PrCommentsProvider } from './prCommentsProvider';
 
 
 export function activate(context: vscode.ExtensionContext) {
@@ -130,6 +131,9 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(
         vscode.workspace.registerTextDocumentContentProvider(ADO_PR_SCHEME, contentProvider),
     );
+
+    // ── Comments Provider ────────────────────────────────────────────
+    new PrCommentsProvider(context);
 
     // ── View File Diff ───────────────────────────────────────────────
     const viewFileDiffDisposable = vscode.commands.registerCommand(

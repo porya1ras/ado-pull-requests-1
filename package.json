@@ -74,6 +74,11 @@
                 "command": "adoPr.openPr",
                 "title": "Open PR in Browser",
                 "icon": "$(link-external)"
+            },
+            {
+                "command": "adoPr.createComment",
+                "title": "Add Comment",
+                "icon": "$(check)"
             }
         ],
         "menus": {
@@ -113,6 +118,12 @@
                 {
                     "command": "adoPr.openPr",
                     "when": "viewItem == pullRequest",
+                    "group": "inline"
+                }
+            ],
+            "comments/commentThread/context": [
+                {
+                    "command": "adoPr.createComment",
                     "group": "inline"
                 }
             ]
